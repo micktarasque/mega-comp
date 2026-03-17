@@ -220,6 +220,14 @@ CREATE POLICY "write_achievements"       ON achievements       FOR ALL TO anon, 
 CREATE POLICY "write_achievement_awards" ON achievement_awards FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
 
 -- Grant table-level access (PostgREST requires this; column-level grants alone cause permission denied)
-GRANT SELECT ON rooms TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON rooms              TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON room_players       TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON room_games         TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON games              TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON game_placements    TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON achievements       TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON achievement_awards TO anon, authenticated;
+GRANT SELECT ON game_history       TO anon, authenticated;
+GRANT SELECT ON room_player_stats  TO anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION check_room_code(UUID, TEXT) TO anon, authenticated;
