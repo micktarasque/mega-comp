@@ -1,13 +1,11 @@
 import { useState } from 'react'
 import Dashboard from './components/Dashboard'
-import History from './components/History'
 import Rooms from './components/Rooms'
 import RoomDetail from './components/RoomDetail'
 
 const TABS = [
-  { id: 'leaderboard', label: 'Dashboard' },
-  { id: 'rooms',       label: 'Rooms' },
-  { id: 'history',     label: 'History' },
+  { id: 'dashboard', label: 'Dashboard', icon: '📊' },
+  { id: 'rooms',     label: 'Rooms',     icon: '🎮' },
 ]
 
 function Toast({ messages }) {
@@ -19,7 +17,7 @@ function Toast({ messages }) {
 }
 
 export default function App() {
-  const [tab, setTab]                   = useState('leaderboard')
+  const [tab, setTab]                   = useState('dashboard')
   const [selectedRoomId, setSelectedRoomId] = useState(null)
   const [toasts, setToasts]             = useState([])
 
@@ -37,19 +35,27 @@ export default function App() {
   return (
     <div className="app">
       <nav className="nav">
-        <span className="nav-logo">Mega Comp</span>
+        <span className="nav-logo">Party — Mega Comp</span>
         <div className="nav-tabs">
           {TABS.map(t => (
             <button key={t.id} className={`nav-tab ${tab === t.id ? 'active' : ''}`} onClick={() => handleTabChange(t.id)}>
-              {t.label}
+              <span className="nav-tab-icon">{t.icon}</span>
+              <span className="nav-tab-label">{t.label}</span>
             </button>
           ))}
         </div>
       </nav>
 
-      {tab === 'leaderboard' && (
-        <Dashboard />
-      )}
+      <nav className="bottom-nav">
+        {TABS.map(t => (
+          <button key={t.id} className={`bottom-nav-tab ${tab === t.id ? 'active' : ''}`} onClick={() => handleTabChange(t.id)}>
+            <span className="bottom-nav-icon">{t.icon}</span>
+            <span className="bottom-nav-label">{t.label}</span>
+          </button>
+        ))}
+      </nav>
+
+      {tab === 'dashboard' && <Dashboard />}
 
       {tab === 'rooms' && !selectedRoomId && (
         <Rooms onRoomSelect={setSelectedRoomId} onToast={toast} />
@@ -62,10 +68,6 @@ export default function App() {
           onBack={() => setSelectedRoomId(null)}
           onToast={toast}
         />
-      )}
-
-      {tab === 'history' && (
-        <History onToast={toast} />
       )}
 
       <Toast messages={toasts} />

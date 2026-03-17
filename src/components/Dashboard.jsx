@@ -1,5 +1,11 @@
 import { useEffect, useState, useRef, useMemo } from 'react'
-import { getRoomStats, getRooms, getGames } from '../db/supabaseDb'
+import { getRoomStats, getRooms, getGames, deleteGame, PLACE_EMOJI } from '../db/supabaseDb'
+
+const LAST_ROOM_KEY = 'mc_last_room'
+
+function formatDate(dateStr) {
+  return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
 
 function initials(n) { return n.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) }
 
@@ -170,7 +176,7 @@ function ActivityTicker({ games }) {
   const items = games.slice(0, 15)
   return (
     <div className="ticker-wrap">
-      <span className="ticker-label">LIVE</span>
+      <span className="ticker-label">► NOW ◄</span>
       <div className="ticker-track">
         <div className="ticker-inner">
           {[...items, ...items].map((g, i) => {
@@ -206,7 +212,7 @@ function ChampionPanel({ champion, runner_up, stats, games }) {
       <div className="champ-header-row">
         <div className="champ-header-badge">
           <StatusDot color={champion.color} />
-          COMPETITION LEADER
+          ◄◄ RANK #1 — COMPETITION LEADER ►►
         </div>
         {lead > 0 && (
           <div className="lead-pill" style={{ borderColor: champion.color + '60', color: champion.color }}>
@@ -249,11 +255,11 @@ function ChampionPanel({ champion, runner_up, stats, games }) {
         <div className="champion-stats-grid">
           <div className="cs-big">
             <div className="cs-val" style={{ color: champion.color }}>{pts}</div>
-            <div className="cs-lbl">TOTAL POINTS</div>
+            <div className="cs-lbl">HIGH SCORE</div>
           </div>
           <div className="cs-big">
             <div className="cs-val">{wins}</div>
-            <div className="cs-lbl">🏆 WINS</div>
+            <div className="cs-lbl">🏆 VICTORIES</div>
           </div>
           <div className="cs-big">
             <div className="cs-val">{champion.podiums}</div>
@@ -261,7 +267,7 @@ function ChampionPanel({ champion, runner_up, stats, games }) {
           </div>
           <div className="cs-big">
             <div className="cs-val">{champion.played}</div>
-            <div className="cs-lbl">GAMES PLAYED</div>
+            <div className="cs-lbl">CREDITS USED</div>
           </div>
 
           <div className="cs-ring">
@@ -285,12 +291,12 @@ function ChampionPanel({ champion, runner_up, stats, games }) {
           </div>
 
           <div className="cs-wide">
-            <div className="cs-lbl" style={{ marginBottom: '0.35rem' }}>FAV BATTLEGROUND</div>
-            <div style={{ fontSize: '1rem', fontWeight: 800 }}>{champion.favGame}</div>
+            <div className="cs-lbl" style={{ marginBottom: '0.35rem' }}>HOME STAGE</div>
+            <div style={{ fontSize: '1rem', fontWeight: 800, fontFamily: "'Courier New', monospace" }}>{champion.favGame}</div>
           </div>
 
           <div className="cs-wide">
-            <div className="cs-lbl" style={{ marginBottom: '0.35rem' }}>CURRENT STREAK</div>
+            <div className="cs-lbl" style={{ marginBottom: '0.35rem' }}>KILL STREAK</div>
             <div style={{ fontSize: '1rem', fontWeight: 800, color: champion.streak > 1 ? '#FF6B35' : 'var(--muted)' }}>
               {champion.streak > 1 ? `🔥 ${champion.streak} WINS` : champion.streak === 1 ? '1 WIN' : '—'}
             </div>
@@ -348,7 +354,7 @@ function ChumpPanel({ chump, champion, games }) {
         <div className="chump-stats">
           <div className="chump-stat big-shame">
             <div className="chump-stat-val">{lossCounter}</div>
-            <div className="chump-stat-lbl">💀 LOSSES</div>
+            <div className="chump-stat-lbl">☠ GAME OVERS</div>
           </div>
           <div className="chump-stat">
             <div className="chump-stat-val" style={{ color: '#FF4040' }}>{chump.winRate}%</div>
@@ -385,7 +391,7 @@ function PointsRace({ stats }) {
   const max = stats[0]?.points || 1
   return (
     <div className="cockpit-panel">
-      <div className="panel-header"><StatusDot color="#FFD700" /><span>POINTS RACE</span></div>
+      <div className="panel-header"><StatusDot color="#FFD700" /><span>◄ SCORE RACE ►</span></div>
       {stats.map((p, i) => {
         const pct = (p.points / max) * 100
         return (
@@ -413,7 +419,7 @@ function PointsRace({ stats }) {
 function FormGuide({ stats, games }) {
   return (
     <div className="cockpit-panel">
-      <div className="panel-header"><StatusDot color="#00C2FF" /><span>RECENT FORM (LAST 8)</span></div>
+      <div className="panel-header"><StatusDot color="#00C2FF" /><span>◄ BATTLE RECORD ►</span></div>
       <div className="form-legend">
         {[{ label: 'WIN', color: '#43E97B' }, { label: '2ND', color: '#C0C8D8' }, { label: '3RD', color: '#CD7F32' }, { label: 'LOSS', color: '#FF4040' }].map(l => (
           <span key={l.label} className="form-legend-item">
@@ -453,7 +459,7 @@ function H2HMatrix({ players, games }) {
 
   return (
     <div className="cockpit-panel">
-      <div className="panel-header"><StatusDot color="#A29BFE" /><span>HEAD TO HEAD</span></div>
+      <div className="panel-header"><StatusDot color="#A29BFE" /><span>◄ VS. MODE ►</span></div>
       <div className="h2h-wrap" style={{ overflowX: 'auto' }}>
         <table className="h2h-table">
           <thead>
@@ -514,7 +520,7 @@ function GameDominance({ games, players }) {
   if (dom.length === 0) return null
   return (
     <div className="cockpit-panel">
-      <div className="panel-header"><StatusDot color="#F7971E" /><span>GAME DOMINANCE</span></div>
+      <div className="panel-header"><StatusDot color="#F7971E" /><span>◄ STAGE MASTERS ►</span></div>
       <div className="dom-list">
         {dom.map(({ type, played, champion, wins }) => (
           <div key={type} className="dom-row">
@@ -660,7 +666,7 @@ function RankingsTable({ stats }) {
   const max = stats[0]?.points || 1
   return (
     <div className="cockpit-panel">
-      <div className="panel-header"><StatusDot color="#7C6FFF" /><span>FULL STANDINGS</span></div>
+      <div className="panel-header"><StatusDot color="#7C6FFF" /><span>◄ HIGH SCORES ►</span></div>
       <div className="rankings-header">
         <span>#</span><span>Player</span><span style={{ textAlign: 'center' }}>Pts</span>
         <span style={{ textAlign: 'center' }}>W</span><span style={{ textAlign: 'center' }} className="col-played">GP</span>
@@ -692,30 +698,154 @@ function RankingsTable({ stats }) {
   )
 }
 
+// ── Room history ──────────────────────────────────────────────────────────────
+function RoomHistory({ games, onDelete }) {
+  const [filter, setFilter] = useState('')
+  const [expanded, setExpanded] = useState(true)
+
+  if (games.length === 0) return null
+
+  const allTypes = [...new Set(games.map(g => g.gameType))].sort()
+  const filtered = filter ? games.filter(g => g.gameType === filter) : games
+
+  return (
+    <div className="cockpit-panel">
+      <div className="panel-header" style={{ cursor: 'pointer' }} onClick={() => setExpanded(v => !v)}>
+        <StatusDot color="#FF6B8A" />
+        <span>◄ BATTLE LOG ►</span>
+        <span style={{ marginLeft: 'auto', color: 'var(--muted)', fontSize: '0.72rem' }}>
+          {games.length} game{games.length !== 1 ? 's' : ''} {expanded ? '▲' : '▼'}
+        </span>
+      </div>
+
+      {expanded && (
+        <>
+          {allTypes.length > 1 && (
+            <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
+              {['', ...allTypes].map(t => (
+                <button key={t} className="btn btn-ghost"
+                  style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem', ...(filter === t ? { borderColor: 'var(--muted)', color: 'var(--text)' } : {}) }}
+                  onClick={() => setFilter(t)}
+                >
+                  {t || 'All'}
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="history-list">
+            {filtered.map(game => {
+              const sorted = [...game.placements].sort((a, b) => {
+                if (a.place === 0 && b.place !== 0) return 1
+                if (a.place !== 0 && b.place === 0) return -1
+                return a.place - b.place
+              })
+              return (
+                <div key={game.id} className="game-row">
+                  <span className="game-date">{formatDate(game.date)}</span>
+                  <div>
+                    <div className="game-type">{game.gameType}</div>
+                    <div className="game-placements-inline">
+                      {sorted.map(({ playerId, playerName, playerColor, place, points }) => {
+                        if (!playerName) return null
+                        return (
+                          <span key={playerId} className="placement-pill"
+                            style={{ color: playerColor, borderColor: playerColor + '40' }}
+                          >
+                            {PLACE_EMOJI[place]} {playerName}
+                            {place > 0 && <span style={{ color: 'var(--muted)', fontWeight: 500 }}> +{points}</span>}
+                          </span>
+                        )
+                      })}
+                    </div>
+                  </div>
+                  <button className="btn btn-danger" onClick={() => onDelete(game.id)} title="Remove">✕</button>
+                </div>
+              )
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 // ── Room selector strip ───────────────────────────────────────────────────────
+const STATUS_META = {
+  active:    { color: '#43E97B', flag: '🏁', label: 'GREEN FLAG',   arcade: 'GO!',      cls: 'sel-active' },
+  upcoming:  { color: '#00C2FF', flag: '🔵', label: 'GEAR UP',      arcade: 'READY',    cls: 'sel-upcoming' },
+  completed: { color: '#888',    flag: '🏆', label: 'RACE OVER',    arcade: 'FINISH',   cls: 'sel-completed' },
+}
 const STATUS_COLORS = { active: '#43E97B', upcoming: '#00C2FF', completed: 'var(--muted)' }
 const STATUS_LABELS = { active: '🟢 LIVE', upcoming: 'UPCOMING', completed: 'DONE' }
 
+const STATUS_FILTER_OPTIONS = [
+  { value: '',          label: 'ALL' },
+  { value: 'active',    label: '🏁 LIVE' },
+  { value: 'upcoming',  label: '🔵 READY' },
+  { value: 'completed', label: '🏆 DONE' },
+]
+
 function RoomSelector({ rooms, selectedId, onSelect }) {
+  const [search, setSearch]     = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
+
+  const filtered = rooms.filter(r => {
+    const matchStatus = !statusFilter || r.status === statusFilter
+    const matchSearch = !search || r.name.toLowerCase().includes(search.toLowerCase())
+    return matchStatus && matchSearch
+  })
+
   return (
     <div className="room-sel-strip">
-      <div className="room-sel-label">SELECT COMPETITION</div>
+      <div className="room-sel-header">
+        <div className="room-sel-title">
+          <span className="room-sel-arcade-label">INSERT COIN</span>
+          <span className="room-sel-subtitle">SELECT COMPETITION</span>
+        </div>
+        <div className="room-sel-controls">
+          <div className="room-sel-status-filters">
+            {STATUS_FILTER_OPTIONS.map(o => (
+              <button key={o.value}
+                className={`room-sel-filter-btn ${statusFilter === o.value ? 'active' : ''}`}
+                onClick={() => setStatusFilter(o.value)}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+          <input
+            className="room-sel-search"
+            placeholder="🔍 Search rooms…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+        </div>
+      </div>
       <div className="room-sel-scroll">
-        {rooms.map(room => (
-          <button
-            key={room.id}
-            className={`room-sel-btn ${selectedId === room.id ? 'active' : ''}`}
-            onClick={() => onSelect(room.id)}
-          >
-            <div className="room-sel-name">{room.name}</div>
-            <div className="room-sel-status" style={{ color: STATUS_COLORS[room.status] ?? 'var(--muted)' }}>
-              {STATUS_LABELS[room.status] ?? 'UPCOMING'}
-            </div>
-            <div className="room-sel-date">
-              {new Date(room.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-            </div>
-          </button>
-        ))}
+        {filtered.length === 0 && (
+          <div style={{ color: 'var(--muted)', fontSize: '0.8rem', padding: '0.5rem 0' }}>No rooms match</div>
+        )}
+        {filtered.map(room => {
+          const meta = STATUS_META[room.status] ?? STATUS_META.upcoming
+          return (
+            <button
+              key={room.id}
+              className={`room-sel-btn ${meta.cls} ${selectedId === room.id ? 'active' : ''}`}
+              onClick={() => onSelect(room.id)}
+            >
+              <div className="room-sel-flag">{meta.flag}</div>
+              <div className="room-sel-btn-body">
+                <div className="room-sel-name">{room.name}</div>
+                <div className="room-sel-date">
+                  {new Date(room.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </div>
+              </div>
+              <div className="room-sel-arcade-status" style={{ color: meta.color }}>
+                {meta.arcade}
+              </div>
+            </button>
+          )
+        })}
       </div>
     </div>
   )
@@ -724,9 +854,14 @@ function RoomSelector({ rooms, selectedId, onSelect }) {
 // ── Main export ───────────────────────────────────────────────────────────────
 export default function Dashboard() {
   const [rooms, setRooms]               = useState([])
-  const [selectedRoomId, setSelectedRoomId] = useState(null)
+  const [selectedRoomId, setSelectedRoomId] = useState(() => localStorage.getItem(LAST_ROOM_KEY) ?? null)
   const [stats, setStats]               = useState([])
   const [games, setGames]               = useState([])
+
+  function selectRoom(id) {
+    setSelectedRoomId(id)
+    if (id) localStorage.setItem(LAST_ROOM_KEY, id)
+  }
 
   async function refresh() {
     const r = await getRooms()
@@ -734,7 +869,9 @@ export default function Dashboard() {
     setSelectedRoomId(prev => {
       if (prev && r.some(x => x.id === prev)) return prev
       const auto = r.find(x => x.status === 'active') ?? r.find(x => x.status === 'upcoming') ?? r[0]
-      return auto?.id ?? null
+      const next = auto?.id ?? null
+      if (next) localStorage.setItem(LAST_ROOM_KEY, next)
+      return next
     })
   }
 
@@ -743,6 +880,11 @@ export default function Dashboard() {
     const [s, allGames] = await Promise.all([getRoomStats(roomId), getGames()])
     setStats(s)
     setGames(allGames.filter(g => g.roomId === roomId).sort((a, b) => new Date(b.date) - new Date(a.date)))
+  }
+
+  async function handleDeleteGame(id) {
+    await deleteGame(id)
+    refreshRoomData(selectedRoomId)
   }
 
   useEffect(() => { refresh() }, [])
@@ -759,10 +901,11 @@ export default function Dashboard() {
     return (
       <div className="cockpit">
         <div className="cockpit-grid-bg" />
-        <div className="empty cockpit-panel" style={{ padding: '3rem', textAlign: 'center' }}>
-          <div style={{ fontSize: '2rem', marginBottom: '0.75rem' }}>🏟️</div>
-          <div style={{ fontWeight: 700, marginBottom: '0.35rem' }}>No competitions yet</div>
-          <div style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>Create a room in the Rooms tab to get started.</div>
+        <div className="cockpit-panel" style={{ padding: '3.5rem 2rem', textAlign: 'center' }}>
+          <div style={{ fontSize: '3rem', marginBottom: '1rem', filter: 'drop-shadow(0 0 20px rgba(0,229,255,0.5))' }}>🕹️</div>
+          <div style={{ fontFamily: "'Courier New', monospace", fontSize: '1.3rem', fontWeight: 900, letterSpacing: '0.2em', color: 'var(--arc-cyan)', textShadow: '0 0 14px rgba(0,229,255,0.8)', marginBottom: '0.5rem' }}>GAME NOT FOUND</div>
+          <div style={{ fontFamily: "'Courier New', monospace", fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--arc-yellow)', textShadow: '0 0 10px rgba(255,230,0,0.7)', animation: 'blink 1.2s step-end infinite', marginBottom: '1rem' }}>► INSERT COIN TO START ◄</div>
+          <div style={{ color: 'var(--muted)', fontSize: '0.82rem', fontFamily: "'Courier New', monospace" }}>Create a room in the Rooms tab.</div>
         </div>
       </div>
     )
@@ -772,7 +915,7 @@ export default function Dashboard() {
     <div className="cockpit">
       <div className="cockpit-grid-bg" />
 
-      <RoomSelector rooms={rooms} selectedId={selectedRoomId} onSelect={setSelectedRoomId} />
+      <RoomSelector rooms={rooms} selectedId={selectedRoomId} onSelect={selectRoom} />
 
       {selectedRoom && (
         <div className="dashboard-room-header">
@@ -790,10 +933,10 @@ export default function Dashboard() {
 
       {champion
         ? <ChampionPanel champion={champion} runner_up={stats[1]} stats={stats} games={games} />
-        : <div className="empty cockpit-panel" style={{ padding: '2rem', textAlign: 'center' }}>
-            <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>🎮</div>
-            <div>No results logged for this competition yet.</div>
-            <div style={{ color: 'var(--muted)', fontSize: '0.82rem', marginTop: '0.25rem' }}>Head to Rooms → Schedule to log game results.</div>
+        : <div className="cockpit-panel" style={{ padding: '2.5rem 2rem', textAlign: 'center' }}>
+            <div style={{ fontSize: '2rem', marginBottom: '0.75rem', filter: 'drop-shadow(0 0 10px rgba(0,229,255,0.4))' }}>🎮</div>
+            <div style={{ fontFamily: "'Courier New', monospace", fontSize: '0.9rem', fontWeight: 900, letterSpacing: '0.16em', color: 'var(--arc-cyan)', textShadow: '0 0 10px rgba(0,229,255,0.6)', marginBottom: '0.4rem' }}>NO DATA YET</div>
+            <div style={{ color: 'var(--muted)', fontSize: '0.8rem', fontFamily: "'Courier New', monospace" }}>Head to Rooms → Schedule to log results.</div>
           </div>
       }
 
@@ -822,6 +965,8 @@ export default function Dashboard() {
       )}
 
       {stats.length > 0 && <RankingsTable stats={stats} />}
+
+      <RoomHistory games={games} onDelete={handleDeleteGame} />
     </div>
   )
 }
