@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useMemo } from 'react'
-import { getRoomStats, getRooms, getGames, deleteGame, PLACE_EMOJI } from '../db/supabaseDb'
+import { getRoomStats, getRooms, getGames, getRoomGames, getAchievements, deleteGame, PLACE_EMOJI } from '../db/supabaseDb'
 
 const LAST_ROOM_KEY = 'mc_last_room'
 
@@ -769,7 +769,7 @@ function RoomHistory({ games, onDelete }) {
   )
 }
 
-// ── Room selector strip ───────────────────────────────────────────────────────
+// ── Room selector strip ──────────────────────────────────────────────────────
 const STATUS_META = {
   active:    { color: '#43E97B', flag: '🏁', label: 'GREEN FLAG',   arcade: 'GO!',      cls: 'sel-active' },
   upcoming:  { color: '#00C2FF', flag: '🔵', label: 'GEAR UP',      arcade: 'READY',    cls: 'sel-upcoming' },
@@ -854,11 +854,97 @@ function RoomSelector({ rooms, selectedId, onSelect, onEdit }) {
 }
 
 // ── Main export ───────────────────────────────────────────────────────────────
+// ── Schedule panel ────────────────────────────────────────────────────────────
+function SchedulePanel({ roomGames, games }) {
+  if (roomGames.length === 0) return (
+    <div className="cockpit-panel">
+      <div className="panel-header"><StatusDot color="#00C2FF" /><span>◄ GAME SCHEDULE ►</span></div>
+      <div style={{ color: 'var(--muted)', fontSize: '0.82rem', fontFamily: "'Courier New', monospace", textAlign: 'center', padding: '1rem 0' }}>
+        NO EVENTS QUEUED
+      </div>
+    </div>
+  )
+
+  return (
+    <div className="cockpit-panel">
+      <div className="panel-header"><StatusDot color="#00C2FF" /><span>◄ GAME SCHEDULE ►</span></div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+        {roomGames.map(rg => {
+          const done = games.some(g => g.roomGameId === rg.id)
+          return (
+            <div key={rg.id} className="dash-sched-row" style={{ borderColor: done ? '#43E97B30' : 'var(--border)' }}>
+              <span className="dash-sched-order" style={{ color: done ? '#43E97B' : 'var(--muted)' }}>#{rg.order}</span>
+              <span className="dash-sched-name">{rg.name}</span>
+              {rg.pointsMode === 'custom'
+                ? <span className="pts-mode-badge custom">✦ Custom</span>
+                : <span className="pts-mode-badge standard">STD</span>}
+              <span className={`dash-sched-status ${done ? 'done' : 'pending'}`}>
+                {done ? '✓ DONE' : '○ UP NEXT'}
+              </span>
+            </div>
+          )
+        })}
+      </div>
+      <div style={{ marginTop: '0.75rem', fontSize: '0.7rem', color: 'var(--muted2)', fontFamily: "'Courier New', monospace" }}>
+        {games.filter(g => roomGames.some(rg => rg.id === g.roomGameId)).length} / {roomGames.length} COMPLETED
+      </div>
+    </div>
+  )
+}
+
+// ── Achievements panel ────────────────────────────────────────────────────────
+function AchievementsPanel({ achievements, stats }) {
+  const playerMap = Object.fromEntries(stats.map(p => [p.id, p]))
+
+  if (achievements.length === 0) return (
+    <div className="cockpit-panel">
+      <div className="panel-header"><StatusDot color="#FFD700" /><span>◄ ACHIEVEMENTS ►</span></div>
+      <div style={{ color: 'var(--muted)', fontSize: '0.82rem', fontFamily: "'Courier New', monospace", textAlign: 'center', padding: '1rem 0' }}>
+        NO ACHIEVEMENTS SET
+      </div>
+    </div>
+  )
+
+  const claimed   = achievements.filter(a => a.earnedByIds.length > 0).length
+  const unclaimed = achievements.length - claimed
+
+  return (
+    <div className="cockpit-panel">
+      <div className="panel-header">
+        <StatusDot color="#FFD700" />
+        <span>◄ ACHIEVEMENTS ►</span>
+        {unclaimed > 0 && <span className="tab-badge available" style={{ marginLeft: 'auto' }}>{unclaimed} up for grabs</span>}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+        {achievements.map(a => {
+          const earner = a.earnedByIds[0] ? playerMap[a.earnedByIds[0]] : null
+          return (
+            <div key={a.id} className="dash-ach-row" style={{ borderColor: earner ? (earner.color + '50') : 'var(--border)', background: earner ? (earner.color + '08') : 'transparent' }}>
+              <span className="dash-ach-icon">{a.icon}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="dash-ach-name">{a.name}</div>
+                {a.description && <div className="dash-ach-desc">{a.description}</div>}
+              </div>
+              <span className="dash-ach-pts" style={{ color: '#FFD700' }}>+{a.pointValue}</span>
+              {earner
+                ? <span className="dash-ach-earner" style={{ color: earner.color }}>🏅 {earner.name}</span>
+                : <span className="dash-ach-earner" style={{ color: 'var(--muted2)' }}>unclaimed</span>}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ── Main export ───────────────────────────────────────────────────────────────
 export default function Dashboard({ onRoomOpen }) {
   const [rooms, setRooms]               = useState([])
   const [selectedRoomId, setSelectedRoomId] = useState(() => localStorage.getItem(LAST_ROOM_KEY) ?? null)
   const [stats, setStats]               = useState([])
   const [games, setGames]               = useState([])
+  const [roomGames, setRoomGames]       = useState([])
+  const [achievements, setAchievements] = useState([])
 
   function selectRoom(id) {
     setSelectedRoomId(id)
@@ -878,10 +964,17 @@ export default function Dashboard({ onRoomOpen }) {
   }
 
   async function refreshRoomData(roomId) {
-    if (!roomId) { setStats([]); setGames([]); return }
-    const [s, allGames] = await Promise.all([getRoomStats(roomId), getGames()])
+    if (!roomId) { setStats([]); setGames([]); setRoomGames([]); setAchievements([]); return }
+    const [s, allGames, rg, achs] = await Promise.all([
+      getRoomStats(roomId),
+      getGames(),
+      getRoomGames(roomId).catch(() => []),
+      getAchievements(roomId).catch(() => []),
+    ])
     setStats(s)
     setGames(allGames.filter(g => g.roomId === roomId).sort((a, b) => new Date(b.date) - new Date(a.date)))
+    setRoomGames(rg)
+    setAchievements(achs)
   }
 
   async function handleDeleteGame(id) {
@@ -930,6 +1023,11 @@ export default function Dashboard({ onRoomOpen }) {
           </div>
         </div>
       )}
+
+      <div className="dual-panel">
+        <SchedulePanel roomGames={roomGames} games={games} />
+        <AchievementsPanel achievements={achievements} stats={stats} />
+      </div>
 
       {games.length > 0 && <ActivityTicker games={games} />}
 
