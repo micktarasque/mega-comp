@@ -157,7 +157,7 @@ function gameDominance(games, players) {
   }).sort((a, b) => b.played - a.played)
 }
 
-function getStatBadges(player, allStats, games) {
+function getStatBadges(player, allStats) {
   const badges = []
   const sorted = [...allStats].sort((a, b) => b.points - a.points)
   if (sorted[0]?.id === player.id) badges.push({ icon: '👑', label: 'KING', color: '#FFD700' })
@@ -201,7 +201,7 @@ function ChampionPanel({ champion, runner_up, stats, games }) {
   const wins = useCounter(champion.wins)
   const lead = champion.points - (runner_up?.points ?? 0)
   const form   = useMemo(() => formGuide(games, champion.id, 8), [games, champion.id])
-  const badges = useMemo(() => getStatBadges(champion, stats, games), [champion, stats, games])
+  const badges = useMemo(() => getStatBadges(champion, stats), [champion, stats])
 
   return (
     <div className="champion-panel">
@@ -555,7 +555,7 @@ function GameDominance({ games, players }) {
 function PlayerCard({ player, rank, games, allStats }) {
   const pts     = useCounter(player.points)
   const form    = useMemo(() => formGuide(games, player.id, 5), [games, player.id])
-  const badges  = useMemo(() => getStatBadges(player, allStats, games), [player, allStats, games])
+  const badges  = useMemo(() => getStatBadges(player, allStats), [player, allStats])
   const losses  = useMemo(() => games.filter(g => g.placements.find(p => p.playerId === player.id)?.place === 0).length, [games, player.id])
   const seconds = useMemo(() => games.filter(g => g.placements.find(p => p.playerId === player.id)?.place === 2).length, [games, player.id])
   const thirds  = useMemo(() => games.filter(g => g.placements.find(p => p.playerId === player.id)?.place === 3).length, [games, player.id])
@@ -861,7 +861,7 @@ function ResultsModal({ stats, roomName, onClose }) {
           </div>
         )}
 
-        <button className="btn btn-ghost" style={{ width: '100%', marginTop: '0.5rem', fontFamily: "'Courier New', monospace", letterSpacing: '0.1em' }} onClick={onClose}>
+        <button className="btn btn-ghost" style={{ width: '100%', marginTop: '0.5rem', fontFamily: "'Courier New', monospace", letterSpacing: '0.08em', fontSize: '0.7rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} onClick={onClose}>
           ► PRESS ANY KEY TO CONTINUE ◄
         </button>
       </div>
