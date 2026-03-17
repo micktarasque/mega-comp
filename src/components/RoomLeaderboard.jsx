@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getRoomStats, getAchievements } from '../db/mockDb'
+import { getRoomStats, getAchievements } from '../db/supabaseDb'
 
 function initials(n) { return n.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) }
 

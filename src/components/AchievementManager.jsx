@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getAchievements, addAchievement, updateAchievement, deleteAchievement, awardAchievement, revokeAchievement, getPlayers } from '../db/mockDb'
+import { getAchievements, addAchievement, updateAchievement, deleteAchievement, awardAchievement, revokeAchievement } from '../db/supabaseDb'
 
 const EMOJI_PRESETS = ['⭐','🏆','🔥','💀','👑','🎯','⚡','🎩','🩸','🗣️','💥','🐦','🎖️','🥊','🎲','🧠','💎','🤡','😤','🥇']
 
@@ -9,8 +9,8 @@ function AchievementCard({ ach, players, playerMap, onUpdated, onToast, verified
   const [editing, setEditing]       = useState(false)
   const [editData, setEditData]     = useState({ ...ach })
 
-  const earners = ach.earnedByIds.map(id => playerMap[id]).filter(Boolean)
-  const locked  = ach.awardedOnce && ach.earnedByIds.length > 0
+  const earners  = ach.earnedByIds.map(id => playerMap[id]).filter(Boolean)
+  const locked   = ach.awardedOnce && ach.earnedByIds.length > 0
   const eligible = players.filter(p => !ach.earnedByIds.includes(p.id) && (!ach.awardedOnce || !locked))
 
   async function handleAward(e) {
@@ -137,11 +137,11 @@ function AchievementCard({ ach, players, playerMap, onUpdated, onToast, verified
 }
 
 function AddAchievementForm({ roomId, onAdded, onCancel }) {
-  const [name, setName]         = useState('')
-  const [desc, setDesc]         = useState('')
-  const [icon, setIcon]         = useState('⭐')
-  const [pts, setPts]           = useState(2)
-  const [once, setOnce]         = useState(true)
+  const [name, setName] = useState('')
+  const [desc, setDesc] = useState('')
+  const [icon, setIcon] = useState('⭐')
+  const [pts, setPts]   = useState(2)
+  const [once, setOnce] = useState(true)
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -193,21 +193,17 @@ function AddAchievementForm({ roomId, onAdded, onCancel }) {
   )
 }
 
-export default function AchievementManager({ room, onToast, verified, onNeedCode }) {
+export default function AchievementManager({ room, roomPlayers, onToast, verified, onNeedCode }) {
   const [achievements, setAchievements] = useState([])
-  const [players, setPlayers]           = useState([])
   const [adding, setAdding]             = useState(false)
 
   async function refresh() {
-    const [a, p] = await Promise.all([getAchievements(room.id), getPlayers()])
-    setAchievements(a)
-    setPlayers(p)
+    setAchievements(await getAchievements(room.id))
   }
 
   useEffect(() => { refresh() }, [room.id])
 
-  const playerMap = Object.fromEntries(players.map(p => [p.id, p]))
-  const roomPlayers = players.filter(p => room.invitedPlayerIds.includes(p.id))
+  const playerMap = Object.fromEntries(roomPlayers.map(p => [p.id, p]))
 
   const totalPts = achievements.reduce((sum, a) => sum + a.pointValue * a.earnedByIds.length, 0)
   const awarded  = achievements.filter(a => a.earnedByIds.length > 0).length

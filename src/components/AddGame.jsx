@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getPlayers, addGame, POINTS, PLACE_EMOJI, PLACE_LABEL } from '../db/mockDb'
+import { getPlayers, addGame, POINTS, PLACE_EMOJI, PLACE_LABEL } from '../db/supabaseDb'
 
 const GAME_TYPES = ['Chess', 'Mario Kart', 'Poker', 'Catan', 'Ping Pong', 'Darts', 'Smash Bros', 'Uno', 'Pool']
 const PLACES = [1, 2, 3, 0]

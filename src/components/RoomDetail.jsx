@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getRoom, getPlayers, getGames, getRoomGames, getAchievements, updateRoom, isRoomVerified } from '../db/mockDb'
+import { getRoom, getGames, getRoomGames, getAchievements, updateRoom, isRoomVerified, getRoomPlayers, addRoomPlayer, removeRoomPlayer } from '../db/supabaseDb'
 import RoomSchedule from './RoomSchedule'
 import AchievementManager from './AchievementManager'
 import RoomLeaderboard from './RoomLeaderboard'
@@ -18,21 +18,88 @@ const STATUS_META = {
   completed: { label: 'DONE',     cls: 'status-completed' },
 }
 
+const PALETTE = ['#7C6FFF', '#FF6B8A', '#43E97B', '#F7971E', '#00C2FF', '#FF9F43', '#A29BFE', '#FD79A8']
+
 function initials(n) { return n.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) }
 
 function formatDate(d) {
   return new Date(d + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
 }
 
-function RoomOverview({ room, players, games, roomGames, achievements, onEdited, verified, onNeedCode }) {
+function PlayerManager({ roomId, roomPlayers, onUpdated, verified, onNeedCode }) {
+  const [newName, setNewName]   = useState('')
+  const [newColor, setNewColor] = useState(PALETTE[0])
+
+  async function handleAdd(e) {
+    e.preventDefault()
+    if (!newName.trim()) return
+    await addRoomPlayer(roomId, newName.trim(), newColor)
+    setNewName('')
+    onUpdated()
+  }
+
+  async function handleRemove(id, name) {
+    if (!confirm(`Remove ${name} from this room? Their game results will also be removed.`)) return
+    await removeRoomPlayer(id)
+    onUpdated()
+  }
+
+  return (
+    <div>
+      <div className="section-title" style={{ marginTop: '1.5rem' }}>Players</div>
+      {roomPlayers.length === 0 && (
+        <div style={{ color: 'var(--muted)', fontSize: '0.82rem', marginBottom: '0.75rem' }}>
+          No players yet — add the people competing in this room.
+        </div>
+      )}
+      <div className="room-players-grid">
+        {roomPlayers.map(p => (
+          <div key={p.id} className="room-player-chip" style={{ borderColor: p.color + '50', background: p.color + '10' }}>
+            <div className="dot" style={{ background: p.color }} />
+            <span style={{ color: p.color, fontWeight: 700 }}>{p.name}</span>
+            {verified && (
+              <button className="icon-btn danger" style={{ marginLeft: 'auto', padding: '0 0.2rem' }} onClick={() => handleRemove(p.id, p.name)} title="Remove">✕</button>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {verified ? (
+        <form onSubmit={handleAdd} className="add-player-inline">
+          <input
+            className="input"
+            placeholder="Player name"
+            value={newName}
+            onChange={e => setNewName(e.target.value)}
+            style={{ flex: 1, minWidth: 120 }}
+          />
+          <div className="color-swatches" style={{ margin: 0 }}>
+            {PALETTE.map(c => (
+              <div key={c} className={`swatch ${newColor === c ? 'selected' : ''}`}
+                style={{ background: c }} onClick={() => setNewColor(c)} />
+            ))}
+          </div>
+          <button type="submit" className="btn btn-primary btn-sm" disabled={!newName.trim()}
+            style={{ opacity: newName.trim() ? 1 : 0.4 }}>
+            Add
+          </button>
+        </form>
+      ) : (
+        <button className="btn btn-ghost btn-sm" style={{ marginTop: '0.5rem' }} onClick={onNeedCode}>
+          🔒 Add Player
+        </button>
+      )}
+    </div>
+  )
+}
+
+function RoomOverview({ room, roomPlayers, games, roomGames, achievements, onEdited, onPlayersUpdated, verified, onNeedCode }) {
   const [editing, setEditing] = useState(false)
   const [editData, setEditData] = useState({ name: room.name, description: room.description, date: room.date, status: room.status })
 
-  const playerMap   = Object.fromEntries(players.map(p => [p.id, p]))
-  const roomPlayers = players.filter(p => room.invitedPlayerIds.includes(p.id))
+  const playerMap   = Object.fromEntries(roomPlayers.map(p => [p.id, p]))
   const gamesCount  = games.filter(g => g.roomId === room.id).length
   const achAwarded  = achievements.filter(a => a.earnedByIds.length > 0).length
-  const totalPtsInPlay = achievements.reduce((s, a) => s + a.pointValue * a.earnedByIds.length, 0)
 
   async function handleSave(e) {
     e.preventDefault()
@@ -89,6 +156,10 @@ function RoomOverview({ room, players, games, roomGames, achievements, onEdited,
       {/* Stats strip */}
       <div className="room-stats-strip">
         <div className="rss-cell">
+          <div className="rss-val">{roomPlayers.length}</div>
+          <div className="rss-lbl">Players</div>
+        </div>
+        <div className="rss-cell">
           <div className="rss-val">{roomGames.length}</div>
           <div className="rss-lbl">Games Scheduled</div>
         </div>
@@ -102,32 +173,24 @@ function RoomOverview({ room, players, games, roomGames, achievements, onEdited,
         </div>
         <div className="rss-cell">
           <div className="rss-val" style={{ color: '#FFD700' }}>{achAwarded}</div>
-          <div className="rss-lbl">Achievements Awarded</div>
-        </div>
-        <div className="rss-cell">
-          <div className="rss-val">{roomPlayers.length}</div>
-          <div className="rss-lbl">Players</div>
+          <div className="rss-lbl">Awarded</div>
         </div>
       </div>
 
-      {/* Players */}
-      <div className="section-title" style={{ marginTop: '1.5rem' }}>Lineup</div>
-      <div className="room-lineup">
-        {roomPlayers.map(p => (
-          <div key={p.id} className="lineup-player">
-            <div className="lineup-avatar" style={{ background: p.color + '22', borderColor: p.color + '60', color: p.color }}>
-              {initials(p.name)}
-            </div>
-            <div className="lineup-name">{p.name}</div>
-          </div>
-        ))}
-      </div>
+      {/* Player management */}
+      <PlayerManager
+        roomId={room.id}
+        roomPlayers={roomPlayers}
+        onUpdated={onPlayersUpdated}
+        verified={verified}
+        onNeedCode={onNeedCode}
+      />
 
       {/* Scheduled games preview */}
       {roomGames.length > 0 && (
         <>
           <div className="section-title" style={{ marginTop: '1.5rem' }}>Game Schedule</div>
-          <div style={{ display: 'flex', flex: 'column', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             {roomGames.map(rg => {
               const hasResult = games.some(g => g.roomGameId === rg.id)
               return (
@@ -175,21 +238,21 @@ function RoomOverview({ room, players, games, roomGames, achievements, onEdited,
 }
 
 export default function RoomDetail({ roomId, onBack, onToast }) {
-  const [room, setRoom]           = useState(null)
-  const [players, setPlayers]     = useState([])
-  const [games, setGames]         = useState([])
-  const [roomGames, setRoomGames] = useState([])
-  const [achs, setAchs]           = useState([])
-  const [tab, setTab]             = useState('overview')
-  const [verified, setVerified]   = useState(() => isRoomVerified(roomId))
+  const [room, setRoom]               = useState(null)
+  const [roomPlayers, setRoomPlayers] = useState([])
+  const [games, setGames]             = useState([])
+  const [roomGames, setRoomGames]     = useState([])
+  const [achs, setAchs]               = useState([])
+  const [tab, setTab]                 = useState('overview')
+  const [verified, setVerified]       = useState(() => isRoomVerified(roomId))
   const [showCodeModal, setShowCodeModal] = useState(false)
-  const [copied, setCopied]       = useState(false)
+  const [copied, setCopied]           = useState(false)
 
   async function refresh() {
     const [r, p, g, rg, a] = await Promise.all([
-      getRoom(roomId), getPlayers(), getGames(), getRoomGames(roomId)?.catch?.(() => []) ?? getRoomGames(roomId), getAchievements(roomId),
+      getRoom(roomId), getRoomPlayers(roomId), getGames(), getRoomGames(roomId), getAchievements(roomId),
     ])
-    setRoom(r); setPlayers(p); setGames(g); setRoomGames(rg); setAchs(a)
+    setRoom(r); setRoomPlayers(p); setGames(g); setRoomGames(rg); setAchs(a)
   }
 
   useEffect(() => { refresh() }, [roomId])
@@ -199,7 +262,7 @@ export default function RoomDetail({ roomId, onBack, onToast }) {
   const meta = STATUS_META[room.status] ?? STATUS_META.upcoming
 
   // Badge counts for tabs
-  const pending = roomGames.filter(rg => !games.some(g => g.roomGameId === rg.id)).length
+  const pending   = roomGames.filter(rg => !games.some(g => g.roomGameId === rg.id)).length
   const unawarded = achs.filter(a => a.earnedByIds.length === 0).length
 
   function handleCopyCode() {
@@ -262,13 +325,37 @@ export default function RoomDetail({ roomId, onBack, onToast }) {
 
       <div className="room-tab-content">
         {tab === 'overview' && (
-          <RoomOverview room={room} players={players} games={games} roomGames={roomGames} achievements={achs} onEdited={refresh} verified={verified} onNeedCode={() => setShowCodeModal(true)} />
+          <RoomOverview
+            room={room}
+            roomPlayers={roomPlayers}
+            games={games}
+            roomGames={roomGames}
+            achievements={achs}
+            onEdited={refresh}
+            onPlayersUpdated={refresh}
+            verified={verified}
+            onNeedCode={() => setShowCodeModal(true)}
+          />
         )}
         {tab === 'schedule' && (
-          <RoomSchedule room={room} onToast={onToast} verified={verified} onNeedCode={() => setShowCodeModal(true)} key={`sched-${roomId}`} />
+          <RoomSchedule
+            room={room}
+            roomPlayers={roomPlayers}
+            onToast={onToast}
+            verified={verified}
+            onNeedCode={() => setShowCodeModal(true)}
+            key={`sched-${roomId}`}
+          />
         )}
         {tab === 'achievements' && (
-          <AchievementManager room={room} onToast={onToast} verified={verified} onNeedCode={() => setShowCodeModal(true)} key={`ach-${roomId}`} />
+          <AchievementManager
+            room={room}
+            roomPlayers={roomPlayers}
+            onToast={onToast}
+            verified={verified}
+            onNeedCode={() => setShowCodeModal(true)}
+            key={`ach-${roomId}`}
+          />
         )}
         {tab === 'standings' && (
           <RoomLeaderboard room={room} key={`standings-${roomId}`} />

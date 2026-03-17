@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useMemo } from 'react'
-import { getStats, getPlayers, getGames, addPlayer, removePlayer, POINTS } from '../db/mockDb'
+import { getStats, getPlayers, getGames, addPlayer, removePlayer, POINTS } from '../db/supabaseDb'
 
 const PALETTE = ['#7C6FFF', '#FF6B8A', '#43E97B', '#F7971E', '#00C2FF', '#FF9F43', '#A29BFE', '#FD79A8']
 

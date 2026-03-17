@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getRooms, getPlayers, addRoom, deleteRoom, updateRoom } from '../db/mockDb'
+import { getRooms, addRoom, deleteRoom, updateRoom } from '../db/supabaseDb'
 
 const STATUS_META = {
   upcoming:  { label: 'UPCOMING', cls: 'status-upcoming' },
@@ -7,32 +7,11 @@ const STATUS_META = {
   completed: { label: 'DONE',     cls: 'status-completed' },
 }
 
-function initials(n) { return n.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) }
-
 function formatDate(d) {
   return new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-function PlayerDots({ ids, playerMap, max = 5 }) {
-  const shown = ids.slice(0, max)
-  const extra = ids.length - max
-  return (
-    <div className="player-dots">
-      {shown.map(id => {
-        const p = playerMap[id]
-        if (!p) return null
-        return (
-          <div key={id} className="player-dot-avatar" style={{ background: p.color + '30', borderColor: p.color, color: p.color }} title={p.name}>
-            {initials(p.name)}
-          </div>
-        )
-      })}
-      {extra > 0 && <div className="player-dot-more">+{extra}</div>}
-    </div>
-  )
-}
-
-function RoomCard({ room, playerMap, gameCount, onOpen, onDelete, onStatusChange }) {
+function RoomCard({ room, onOpen, onDelete, onStatusChange }) {
   const meta = STATUS_META[room.status] ?? STATUS_META.upcoming
   return (
     <div className={`room-card ${room.status}`} onClick={onOpen} role="button" tabIndex={0} onKeyDown={e => e.key === 'Enter' && onOpen()}>
@@ -58,34 +37,20 @@ function RoomCard({ room, playerMap, gameCount, onOpen, onDelete, onStatusChange
       {room.description && (
         <div className="room-card-desc">{room.description.length > 100 ? room.description.slice(0, 100) + '…' : room.description}</div>
       )}
-
-      <div className="room-card-footer">
-        <PlayerDots ids={room.invitedPlayerIds} playerMap={playerMap} />
-        <div className="room-card-meta">
-          <span>{gameCount} game{gameCount !== 1 ? 's' : ''}</span>
-          <span>·</span>
-          <span>{room.invitedPlayerIds.length} player{room.invitedPlayerIds.length !== 1 ? 's' : ''}</span>
-        </div>
-      </div>
     </div>
   )
 }
 
-function CreateRoomForm({ players, onCreated, onCancel }) {
+function CreateRoomForm({ onCreated, onCancel }) {
   const [name, setName]     = useState('')
   const [date, setDate]     = useState(new Date().toISOString().split('T')[0])
   const [desc, setDesc]     = useState('')
   const [status, setStatus] = useState('upcoming')
-  const [invited, setInvited] = useState(players.map(p => p.id))
-
-  function togglePlayer(id) {
-    setInvited(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
-  }
 
   async function handleSubmit(e) {
     e.preventDefault()
-    if (!name.trim() || invited.length === 0) return
-    await addRoom(name.trim(), date, desc.trim(), invited, status)
+    if (!name.trim()) return
+    await addRoom(name.trim(), date, desc.trim(), status)
     onCreated()
   }
 
@@ -118,27 +83,14 @@ function CreateRoomForm({ players, onCreated, onCancel }) {
           <textarea className="input" rows={3} placeholder="Rules, stakes, vibe…" value={desc} onChange={e => setDesc(e.target.value)} style={{ resize: 'vertical' }} />
         </div>
 
-        <div className="field">
-          <label className="label">Invite Players</label>
-          <div className="participants-grid">
-            {players.map(p => (
-              <button key={p.id} type="button"
-                className={`participant-chip ${invited.includes(p.id) ? 'selected' : ''}`}
-                style={invited.includes(p.id) ? { color: p.color } : {}}
-                onClick={() => togglePlayer(p.id)}
-              >
-                <div className="dot" style={{ background: p.color }} />
-                {p.name}
-              </button>
-            ))}
-          </div>
-          {players.length === 0 && <div style={{ color: 'var(--muted)', fontSize: '0.8rem' }}>No players yet — add them from the Leaderboard tab.</div>}
+        <div style={{ color: 'var(--muted)', fontSize: '0.8rem' }}>
+          Players are added inside the room after creation.
         </div>
 
         <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
           <button type="button" className="btn btn-ghost" onClick={onCancel}>Cancel</button>
-          <button type="submit" className="btn btn-primary" disabled={!name.trim() || invited.length === 0}
-            style={{ opacity: name.trim() && invited.length ? 1 : 0.4 }}>
+          <button type="submit" className="btn btn-primary" disabled={!name.trim()}
+            style={{ opacity: name.trim() ? 1 : 0.4 }}>
             Create Room
           </button>
         </div>
@@ -149,22 +101,16 @@ function CreateRoomForm({ players, onCreated, onCancel }) {
 
 export default function Rooms({ onRoomSelect, onToast }) {
   const [rooms, setRooms]       = useState([])
-  const [players, setPlayers]   = useState([])
-  const [gameCounts, setGameCounts] = useState({})
   const [creating, setCreating] = useState(false)
 
   async function refresh() {
-    const [r, p] = await Promise.all([getRooms(), getPlayers()])
-    setRooms(r)
-    setPlayers(p)
+    setRooms(await getRooms())
   }
 
   useEffect(() => { refresh() }, [])
 
-  const playerMap = Object.fromEntries(players.map(p => [p.id, p]))
-
   async function handleDelete(id) {
-    if (!confirm('Delete this room? Game results will be kept as free-play.')) return
+    if (!confirm('Delete this room? All players, game schedules, and results will be permanently removed.')) return
     await deleteRoom(id)
     onToast('Room deleted')
     refresh()
@@ -194,7 +140,6 @@ export default function Rooms({ onRoomSelect, onToast }) {
       {creating && (
         <div style={{ marginBottom: '1.5rem' }}>
           <CreateRoomForm
-            players={players}
             onCreated={() => { setCreating(false); refresh(); onToast('Room created!') }}
             onCancel={() => setCreating(false)}
           />
@@ -218,8 +163,6 @@ export default function Rooms({ onRoomSelect, onToast }) {
                 <RoomCard
                   key={room.id}
                   room={room}
-                  playerMap={playerMap}
-                  gameCount={gameCounts[room.id] ?? 0}
                   onOpen={() => onRoomSelect(room.id)}
                   onDelete={() => handleDelete(room.id)}
                   onStatusChange={handleStatusChange}

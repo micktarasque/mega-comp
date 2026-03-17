@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getRoomGames, addRoomGame, updateRoomGame, deleteRoomGame, getPlayers, getGames, addGame, POINTS, PLACE_EMOJI, PLACE_LABEL } from '../db/mockDb'
+import { getRoomGames, addRoomGame, updateRoomGame, deleteRoomGame, getGames, addGame, POINTS, PLACE_EMOJI, PLACE_LABEL } from '../db/supabaseDb'
 
 const PLACES = [1, 2, 3, 0]
 
@@ -14,7 +14,7 @@ function PointsBadge({ pointsMode, customPoints }) {
 // Inline log-result form for a specific room game slot
 function LogResultInline({ room, roomGame, players, onDone, onToast }) {
   const ptMap = (roomGame.pointsMode === 'custom' && roomGame.customPoints) ? roomGame.customPoints : POINTS
-  const [participantIds, setParticipantIds] = useState(room.invitedPlayerIds)
+  const [participantIds, setParticipantIds] = useState(players.map(p => p.id))
   const [placements, setPlacements] = useState({})
   const [date, setDate] = useState(room.date)
 
@@ -62,7 +62,7 @@ function LogResultInline({ room, roomGame, players, onDone, onToast }) {
         <div className="field" style={{ flex: 2 }}>
           <label className="label">Who played?</label>
           <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-            {players.filter(p => room.invitedPlayerIds.includes(p.id)).map(p => (
+            {players.map(p => (
               <button key={p.id} type="button"
                 className={`participant-chip ${participantIds.includes(p.id) ? 'selected' : ''}`}
                 style={participantIds.includes(p.id) ? { color: p.color } : {}}
@@ -125,8 +125,8 @@ function RoomGameCard({ roomGame, room, players, allGames, onUpdated, onToast, v
   const [editing, setEditing]   = useState(false)
   const [editData, setEditData] = useState({ ...roomGame })
 
-  const results = allGames.filter(g => g.roomGameId === roomGame.id)
-  const ptMap   = (roomGame.pointsMode === 'custom' && roomGame.customPoints) ? roomGame.customPoints : POINTS
+  const results   = allGames.filter(g => g.roomGameId === roomGame.id)
+  const ptMap     = (roomGame.pointsMode === 'custom' && roomGame.customPoints) ? roomGame.customPoints : POINTS
   const playerMap = Object.fromEntries(players.map(p => [p.id, p]))
 
   async function handleDelete() {
@@ -231,13 +231,11 @@ function RoomGameCard({ roomGame, room, players, allGames, onUpdated, onToast, v
               <div key={game.id} className="sgc-result-row">
                 <span className="sgc-result-date">{new Date(game.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
                 <div className="sgc-result-placements">
-                  {sorted.map(({ playerId, place }) => {
-                    const p = playerMap[playerId]
-                    if (!p) return null
+                  {sorted.map(({ playerId, playerName, playerColor, place, points }) => {
                     return (
-                      <span key={playerId} className="placement-pill" style={{ color: p.color, borderColor: p.color + '50' }}>
-                        {PLACE_EMOJI[place]} {p.name}
-                        <span style={{ color: 'var(--muted)', fontWeight: 500 }}> +{ptMap[place]}</span>
+                      <span key={playerId} className="placement-pill" style={{ color: playerColor, borderColor: playerColor + '50' }}>
+                        {PLACE_EMOJI[place]} {playerName}
+                        <span style={{ color: 'var(--muted)', fontWeight: 500 }}> +{points}</span>
                       </span>
                     )
                   })}
@@ -260,10 +258,10 @@ function RoomGameCard({ roomGame, room, players, allGames, onUpdated, onToast, v
 }
 
 function AddGameSlotForm({ roomId, currentCount, onAdded, onCancel }) {
-  const [name, setName]         = useState('')
-  const [desc, setDesc]         = useState('')
-  const [mode, setMode]         = useState('standard')
-  const [custom, setCustom]     = useState({ 1: 3, 2: 2, 3: 1, 0: 0 })
+  const [name, setName]     = useState('')
+  const [desc, setDesc]     = useState('')
+  const [mode, setMode]     = useState('standard')
+  const [custom, setCustom] = useState({ 1: 3, 2: 2, 3: 1, 0: 0 })
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -316,22 +314,28 @@ function AddGameSlotForm({ roomId, currentCount, onAdded, onCancel }) {
   )
 }
 
-export default function RoomSchedule({ room, onToast, verified, onNeedCode }) {
+export default function RoomSchedule({ room, roomPlayers, onToast, verified, onNeedCode }) {
   const [roomGames, setRoomGames] = useState([])
-  const [players, setPlayers]     = useState([])
   const [allGames, setAllGames]   = useState([])
   const [addingSlot, setAddingSlot] = useState(false)
 
   async function refresh() {
-    const [rg, p, g] = await Promise.all([getRoomGames(room.id), getPlayers(), getGames()])
+    const [rg, g] = await Promise.all([getRoomGames(room.id), getGames()])
     setRoomGames(rg)
-    setPlayers(p)
     setAllGames(g)
   }
 
   useEffect(() => { refresh() }, [room.id])
 
   const completedCount = roomGames.filter(rg => allGames.some(g => g.roomGameId === rg.id)).length
+
+  if (roomPlayers.length === 0) {
+    return (
+      <div className="empty" style={{ paddingTop: '2rem' }}>
+        Add players in the Overview tab before scheduling games.
+      </div>
+    )
+  }
 
   return (
     <div>
@@ -353,7 +357,7 @@ export default function RoomSchedule({ room, onToast, verified, onNeedCode }) {
             key={rg.id}
             roomGame={rg}
             room={room}
-            players={players}
+            players={roomPlayers}
             allGames={allGames}
             onUpdated={refresh}
             onToast={onToast}

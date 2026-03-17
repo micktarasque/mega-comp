@@ -677,6 +677,12 @@ body {
 .room-code-value { font-size: 1rem; font-weight: 900; letter-spacing: 0.15em; color: #00C2FF; font-family: monospace; }
 .room-code-unlocked { font-size: 0.68rem; color: #43E97B; font-weight: 700; }
 
+/* ── Room player management ────────────────────── */
+.room-players-grid { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem; }
+.room-player-chip { display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.6rem; border: 1px solid; border-radius: 2rem; font-size: 0.82rem; }
+.add-player-inline { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; margin-top: 0.75rem; }
+.add-player-inline .input { height: 2.2rem; padding: 0.3rem 0.7rem; font-size: 0.85rem; }
+
 /* ── Code modal ────────────────────────────────── */
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 1rem; }
 .modal-box { background: var(--card); border: 1px solid var(--border2); border-radius: var(--radius); padding: 2rem 2rem 1.75rem; max-width: 360px; width: 100%; text-align: center; box-shadow: 0 25px 60px rgba(0,0,0,0.6); }

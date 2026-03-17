@@ -1,6 +1,5 @@
-import { useState, useCallback } from 'react'
+import { useState } from 'react'
 import Dashboard from './components/Dashboard'
-import AddGame from './components/AddGame'
 import History from './components/History'
 import Rooms from './components/Rooms'
 import RoomDetail from './components/RoomDetail'
@@ -8,7 +7,6 @@ import RoomDetail from './components/RoomDetail'
 const TABS = [
   { id: 'leaderboard', label: 'Dashboard' },
   { id: 'rooms',       label: 'Rooms' },
-  { id: 'log',         label: '+ Log Game' },
   { id: 'history',     label: 'History' },
 ]
 
@@ -22,7 +20,6 @@ function Toast({ messages }) {
 
 export default function App() {
   const [tab, setTab]                   = useState('leaderboard')
-  const [refreshKey, setRefreshKey]     = useState(0)
   const [selectedRoomId, setSelectedRoomId] = useState(null)
   const [toasts, setToasts]             = useState([])
 
@@ -31,10 +28,6 @@ export default function App() {
     setToasts(prev => [...prev, { id, text }])
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000)
   }
-
-  function bump() { setRefreshKey(k => k + 1) }
-
-  const handleGameAdded = useCallback(() => { bump(); setTab('leaderboard') }, [])
 
   function handleTabChange(id) {
     setTab(id)
@@ -55,7 +48,7 @@ export default function App() {
       </nav>
 
       {tab === 'leaderboard' && (
-        <Dashboard key={refreshKey} onToast={toast} onRefresh={bump} />
+        <Dashboard />
       )}
 
       {tab === 'rooms' && !selectedRoomId && (
@@ -71,12 +64,8 @@ export default function App() {
         />
       )}
 
-      {tab === 'log' && (
-        <AddGame onGameAdded={handleGameAdded} onToast={toast} />
-      )}
-
       {tab === 'history' && (
-        <History refreshKey={refreshKey} onToast={toast} />
+        <History onToast={toast} />
       )}
 
       <Toast messages={toasts} />

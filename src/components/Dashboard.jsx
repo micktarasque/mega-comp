@@ -1,7 +1,5 @@
 import { useEffect, useState, useRef, useMemo } from 'react'
-import { getRoomStats, getRooms, getPlayers, getGames, addPlayer, removePlayer, POINTS } from '../db/mockDb'
-
-const PALETTE = ['#7C6FFF', '#FF6B8A', '#43E97B', '#F7971E', '#00C2FF', '#FF9F43', '#A29BFE', '#FD79A8']
+import { getRoomStats, getRooms, getGames } from '../db/supabaseDb'
 
 function initials(n) { return n.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) }
 
@@ -167,7 +165,7 @@ function getStatBadges(player, allStats, games) {
 }
 
 // ── Activity ticker ───────────────────────────────────────────────────────────
-function ActivityTicker({ games, playerMap }) {
+function ActivityTicker({ games }) {
   if (games.length === 0) return null
   const items = games.slice(0, 15)
   return (
@@ -177,10 +175,9 @@ function ActivityTicker({ games, playerMap }) {
         <div className="ticker-inner">
           {[...items, ...items].map((g, i) => {
             const w = g.placements.find(p => p.place === 1)
-            const wp = w ? playerMap[w.playerId] : null
             return (
               <span key={i} className="ticker-item">
-                <span style={{ color: wp?.color ?? 'var(--text)' }}>🏆 {wp?.name ?? '?'}</span>
+                <span style={{ color: w?.playerColor ?? 'var(--text)' }}>🏆 {w?.playerName ?? '?'}</span>
                 {' won '}<span style={{ color: 'var(--muted)' }}>{g.gameType}</span>
                 {' ·· '}
               </span>
@@ -695,68 +692,6 @@ function RankingsTable({ stats }) {
   )
 }
 
-// ── Players manager ───────────────────────────────────────────────────────────
-function PlayersManager({ onToast, onRefresh }) {
-  const [players, setPlayers] = useState([])
-  const [newName, setNewName] = useState('')
-  const [newColor, setNewColor] = useState(PALETTE[0])
-  const [open, setOpen] = useState(false)
-
-  async function refresh() { setPlayers(await getPlayers()) }
-  useEffect(() => { refresh() }, [])
-
-  async function handleAdd(e) {
-    e.preventDefault()
-    if (!newName.trim()) return
-    await addPlayer(newName.trim(), newColor)
-    setNewName(''); onToast(`${newName.trim()} added!`)
-    refresh(); onRefresh()
-  }
-  async function handleRemove(id, name) {
-    await removePlayer(id); onToast(`${name} removed`); refresh(); onRefresh()
-  }
-
-  return (
-    <div style={{ marginTop: '0.5rem' }}>
-      <button className="btn btn-ghost" style={{ fontSize: '0.8rem' }} onClick={() => setOpen(v => !v)}>
-        {open ? '▲' : '▼'} Manage Players ({players.length})
-      </button>
-      {open && (
-        <div className="card" style={{ marginTop: '0.75rem' }}>
-          <div className="section-title">Players</div>
-          <div className="players-grid">
-            {players.map(p => (
-              <div key={p.id} className="player-card">
-                <button className="player-card-del" onClick={() => handleRemove(p.id, p.name)}>✕</button>
-                <div className="player-card-avatar" style={{ background: p.color + '28' }}>
-                  <span style={{ color: p.color }}>{initials(p.name)}</span>
-                </div>
-                <div className="player-card-name">{p.name}</div>
-              </div>
-            ))}
-          </div>
-          <div className="divider" />
-          <div className="section-title">Add Player</div>
-          <form onSubmit={handleAdd} className="add-player-form">
-            <div className="field" style={{ flex: 1, minWidth: 140 }}>
-              <input className="input" placeholder="Name" value={newName} onChange={e => setNewName(e.target.value)} />
-            </div>
-            <div className="field">
-              <div className="color-swatches">
-                {PALETTE.map(c => (
-                  <div key={c} className={`swatch ${newColor === c ? 'selected' : ''}`}
-                    style={{ background: c }} onClick={() => setNewColor(c)} />
-                ))}
-              </div>
-            </div>
-            <button className="btn btn-primary" type="submit">Add</button>
-          </form>
-        </div>
-      )}
-    </div>
-  )
-}
-
 // ── Room selector strip ───────────────────────────────────────────────────────
 const STATUS_COLORS = { active: '#43E97B', upcoming: '#00C2FF', completed: 'var(--muted)' }
 const STATUS_LABELS = { active: '🟢 LIVE', upcoming: 'UPCOMING', completed: 'DONE' }
@@ -787,17 +722,15 @@ function RoomSelector({ rooms, selectedId, onSelect }) {
 }
 
 // ── Main export ───────────────────────────────────────────────────────────────
-export default function Dashboard({ onToast, onRefresh }) {
+export default function Dashboard() {
   const [rooms, setRooms]               = useState([])
   const [selectedRoomId, setSelectedRoomId] = useState(null)
   const [stats, setStats]               = useState([])
   const [games, setGames]               = useState([])
-  const [players, setPlayers]           = useState([])
 
   async function refresh() {
-    const [r, p] = await Promise.all([getRooms(), getPlayers()])
+    const r = await getRooms()
     setRooms(r)
-    setPlayers(p)
     setSelectedRoomId(prev => {
       if (prev && r.some(x => x.id === prev)) return prev
       const auto = r.find(x => x.status === 'active') ?? r.find(x => x.status === 'upcoming') ?? r[0]
@@ -816,8 +749,7 @@ export default function Dashboard({ onToast, onRefresh }) {
   useEffect(() => { refreshRoomData(selectedRoomId) }, [selectedRoomId])
 
   const selectedRoom = rooms.find(r => r.id === selectedRoomId) ?? null
-  const playerMap    = useMemo(() => Object.fromEntries(players.map(p => [p.id, p])), [players])
-  const roomPlayers  = useMemo(() => players.filter(p => selectedRoom?.invitedPlayerIds.includes(p.id)), [players, selectedRoom])
+  const roomPlayers  = useMemo(() => stats.map(s => ({ id: s.id, name: s.name, color: s.color })), [stats])
 
   const champion  = stats[0]
   const chump     = stats[stats.length - 1]
@@ -854,7 +786,7 @@ export default function Dashboard({ onToast, onRefresh }) {
         </div>
       )}
 
-      {games.length > 0 && <ActivityTicker games={games} playerMap={playerMap} />}
+      {games.length > 0 && <ActivityTicker games={games} />}
 
       {champion
         ? <ChampionPanel champion={champion} runner_up={stats[1]} stats={stats} games={games} />
@@ -890,8 +822,6 @@ export default function Dashboard({ onToast, onRefresh }) {
       )}
 
       {stats.length > 0 && <RankingsTable stats={stats} />}
-
-      <PlayersManager onToast={onToast} onRefresh={() => { refresh(); refreshRoomData(selectedRoomId) }} />
     </div>
   )
 }

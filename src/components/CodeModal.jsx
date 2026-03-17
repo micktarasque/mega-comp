@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { verifyRoomCode } from '../db/mockDb'
+import { verifyRoomCode } from '../db/supabaseDb'
 
 export default function CodeModal({ roomId, roomName, onVerified, onCancel }) {
   const [code, setCode]       = useState('')
