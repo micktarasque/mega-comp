@@ -786,8 +786,17 @@ const STATUS_FILTER_OPTIONS = [
 ]
 
 function RoomSelector({ rooms, selectedId, onSelect, onEdit }) {
-  const [search, setSearch]     = useState('')
+  const [search, setSearch]         = useState('')
   const [statusFilter, setStatusFilter] = useState('')
+  const [copiedId, setCopiedId]     = useState(null)
+
+  function handleShare(e, roomId) {
+    e.stopPropagation()
+    const url = `${window.location.origin}${window.location.pathname}#room/${roomId}`
+    navigator.clipboard?.writeText(url).catch(() => {})
+    setCopiedId(roomId)
+    setTimeout(() => setCopiedId(null), 2000)
+  }
 
   const filtered = rooms.filter(r => {
     const matchStatus = !statusFilter || r.status === statusFilter
@@ -844,6 +853,9 @@ function RoomSelector({ rooms, selectedId, onSelect, onEdit }) {
                 <button className="room-sel-action-btn edit" onClick={() => onEdit(room.id)}>
                   ✎ EDIT
                 </button>
+                <button className="room-sel-action-btn share" onClick={e => handleShare(e, room.id)}>
+                  {copiedId === room.id ? '✓ COPIED' : '🔗 SHARE'}
+                </button>
               </div>
             </div>
           )
@@ -856,10 +868,13 @@ function RoomSelector({ rooms, selectedId, onSelect, onEdit }) {
 // ── Main export ───────────────────────────────────────────────────────────────
 // ── Schedule panel ────────────────────────────────────────────────────────────
 function SchedulePanel({ roomGames, games }) {
+  const doneCount = roomGames.filter(rg => games.some(g => g.roomGameId === rg.id)).length
+  const pct = roomGames.length ? Math.round((doneCount / roomGames.length) * 100) : 0
+
   if (roomGames.length === 0) return (
     <div className="cockpit-panel">
       <div className="panel-header"><StatusDot color="#00C2FF" /><span>◄ GAME SCHEDULE ►</span></div>
-      <div style={{ color: 'var(--muted)', fontSize: '0.82rem', fontFamily: "'Courier New', monospace", textAlign: 'center', padding: '1rem 0' }}>
+      <div style={{ color: 'var(--muted)', fontSize: '0.8rem', fontFamily: "'Courier New', monospace", textAlign: 'center', padding: '1.5rem 0', letterSpacing: '0.12em' }}>
         NO EVENTS QUEUED
       </div>
     </div>
@@ -868,25 +883,27 @@ function SchedulePanel({ roomGames, games }) {
   return (
     <div className="cockpit-panel">
       <div className="panel-header"><StatusDot color="#00C2FF" /><span>◄ GAME SCHEDULE ►</span></div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+      <div>
         {roomGames.map(rg => {
           const done = games.some(g => g.roomGameId === rg.id)
           return (
-            <div key={rg.id} className="dash-sched-row" style={{ borderColor: done ? '#43E97B30' : 'var(--border)' }}>
-              <span className="dash-sched-order" style={{ color: done ? '#43E97B' : 'var(--muted)' }}>#{rg.order}</span>
+            <div key={rg.id} className={`dash-sched-row ${done ? 'done' : ''}`}>
+              <span className="dash-sched-order">#{rg.order}</span>
               <span className="dash-sched-name">{rg.name}</span>
-              {rg.pointsMode === 'custom'
-                ? <span className="pts-mode-badge custom">✦ Custom</span>
-                : <span className="pts-mode-badge standard">STD</span>}
+              {rg.pointsMode === 'custom' && <span className="pts-mode-badge custom">✦</span>}
               <span className={`dash-sched-status ${done ? 'done' : 'pending'}`}>
-                {done ? '✓ DONE' : '○ UP NEXT'}
+                {done ? '✓' : '○'}
               </span>
             </div>
           )
         })}
       </div>
-      <div style={{ marginTop: '0.75rem', fontSize: '0.7rem', color: 'var(--muted2)', fontFamily: "'Courier New', monospace" }}>
-        {games.filter(g => roomGames.some(rg => rg.id === g.roomGameId)).length} / {roomGames.length} COMPLETED
+      <div className="dash-sched-progress">
+        <span style={{ color: pct === 100 ? '#43E97B' : 'var(--muted)' }}>{doneCount}/{roomGames.length}</span>
+        <div className="dash-sched-bar-track">
+          <div className="dash-sched-bar-fill" style={{ width: `${pct}%` }} />
+        </div>
+        <span style={{ color: pct === 100 ? '#43E97B' : 'var(--arc-cyan)' }}>{pct}%</span>
       </div>
     </div>
   )
@@ -895,43 +912,47 @@ function SchedulePanel({ roomGames, games }) {
 // ── Achievements panel ────────────────────────────────────────────────────────
 function AchievementsPanel({ achievements, stats }) {
   const playerMap = Object.fromEntries(stats.map(p => [p.id, p]))
+  const claimed   = achievements.filter(a => a.earnedByIds.length > 0).length
+  const totalPts  = achievements.reduce((s, a) => s + a.pointValue, 0)
 
   if (achievements.length === 0) return (
     <div className="cockpit-panel">
       <div className="panel-header"><StatusDot color="#FFD700" /><span>◄ ACHIEVEMENTS ►</span></div>
-      <div style={{ color: 'var(--muted)', fontSize: '0.82rem', fontFamily: "'Courier New', monospace", textAlign: 'center', padding: '1rem 0' }}>
+      <div style={{ color: 'var(--muted)', fontSize: '0.8rem', fontFamily: "'Courier New', monospace", textAlign: 'center', padding: '1.5rem 0', letterSpacing: '0.12em' }}>
         NO ACHIEVEMENTS SET
       </div>
     </div>
   )
-
-  const claimed   = achievements.filter(a => a.earnedByIds.length > 0).length
-  const unclaimed = achievements.length - claimed
 
   return (
     <div className="cockpit-panel">
       <div className="panel-header">
         <StatusDot color="#FFD700" />
         <span>◄ ACHIEVEMENTS ►</span>
-        {unclaimed > 0 && <span className="tab-badge available" style={{ marginLeft: 'auto' }}>{unclaimed} up for grabs</span>}
+        <span style={{ marginLeft: 'auto', fontFamily: "'Courier New', monospace", fontSize: '0.65rem', color: '#FFD700', letterSpacing: '0.08em' }}>
+          {claimed}/{achievements.length} CLAIMED
+        </span>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+      <div>
         {achievements.map(a => {
           const earner = a.earnedByIds[0] ? playerMap[a.earnedByIds[0]] : null
           return (
-            <div key={a.id} className="dash-ach-row" style={{ borderColor: earner ? (earner.color + '50') : 'var(--border)', background: earner ? (earner.color + '08') : 'transparent' }}>
+            <div key={a.id} className="dash-ach-row" style={{ background: earner ? (earner.color + '08') : undefined }}>
               <span className="dash-ach-icon">{a.icon}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="dash-ach-name">{a.name}</div>
-                {a.description && <div className="dash-ach-desc">{a.description}</div>}
+                {earner
+                  ? <div className="dash-ach-earner" style={{ color: earner.color }}>🏅 {earner.name}</div>
+                  : <div className="dash-ach-earner" style={{ color: 'var(--muted2)' }}>unclaimed</div>}
               </div>
-              <span className="dash-ach-pts" style={{ color: '#FFD700' }}>+{a.pointValue}</span>
-              {earner
-                ? <span className="dash-ach-earner" style={{ color: earner.color }}>🏅 {earner.name}</span>
-                : <span className="dash-ach-earner" style={{ color: 'var(--muted2)' }}>unclaimed</span>}
+              <span className="dash-ach-pts" style={{ color: '#FFD700', textShadow: '0 0 8px rgba(255,215,0,0.4)' }}>+{a.pointValue}</span>
             </div>
           )
         })}
+      </div>
+      <div className="dash-ach-summary">
+        <span>{achievements.length - claimed} still up for grabs</span>
+        <span style={{ color: '#FFD700' }}>{totalPts} pts total</span>
       </div>
     </div>
   )
