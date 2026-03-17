@@ -785,7 +785,7 @@ const STATUS_FILTER_OPTIONS = [
   { value: 'completed', label: '🏆 DONE' },
 ]
 
-function RoomSelector({ rooms, selectedId, onSelect }) {
+function RoomSelector({ rooms, selectedId, onSelect, onEdit }) {
   const [search, setSearch]     = useState('')
   const [statusFilter, setStatusFilter] = useState('')
 
@@ -827,12 +827,9 @@ function RoomSelector({ rooms, selectedId, onSelect }) {
         )}
         {filtered.map(room => {
           const meta = STATUS_META[room.status] ?? STATUS_META.upcoming
+          const isSelected = selectedId === room.id
           return (
-            <button
-              key={room.id}
-              className={`room-sel-btn ${meta.cls} ${selectedId === room.id ? 'active' : ''}`}
-              onClick={() => onSelect(room.id)}
-            >
+            <div key={room.id} className={`room-sel-btn ${meta.cls} ${isSelected ? 'active' : ''}`}>
               <div className="room-sel-flag">{meta.flag}</div>
               <div className="room-sel-btn-body">
                 <div className="room-sel-name">{room.name}</div>
@@ -840,10 +837,15 @@ function RoomSelector({ rooms, selectedId, onSelect }) {
                   {new Date(room.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                 </div>
               </div>
-              <div className="room-sel-arcade-status" style={{ color: meta.color }}>
-                {meta.arcade}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', flexShrink: 0 }}>
+                <button className="room-sel-action-btn" onClick={() => onSelect(room.id)}>
+                  {isSelected ? '▲ VIEWING' : '▼ VIEW'}
+                </button>
+                <button className="room-sel-action-btn edit" onClick={() => onEdit(room.id)}>
+                  ✎ EDIT
+                </button>
               </div>
-            </button>
+            </div>
           )
         })}
       </div>
@@ -852,7 +854,7 @@ function RoomSelector({ rooms, selectedId, onSelect }) {
 }
 
 // ── Main export ───────────────────────────────────────────────────────────────
-export default function Dashboard() {
+export default function Dashboard({ onRoomOpen }) {
   const [rooms, setRooms]               = useState([])
   const [selectedRoomId, setSelectedRoomId] = useState(() => localStorage.getItem(LAST_ROOM_KEY) ?? null)
   const [stats, setStats]               = useState([])
@@ -915,7 +917,7 @@ export default function Dashboard() {
     <div className="cockpit">
       <div className="cockpit-grid-bg" />
 
-      <RoomSelector rooms={rooms} selectedId={selectedRoomId} onSelect={selectRoom} />
+      <RoomSelector rooms={rooms} selectedId={selectedRoomId} onSelect={selectRoom} onEdit={onRoomOpen} />
 
       {selectedRoom && (
         <div className="dashboard-room-header">

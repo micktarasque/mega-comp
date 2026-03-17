@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Dashboard from './components/Dashboard'
 import Rooms from './components/Rooms'
 import RoomDetail from './components/RoomDetail'
@@ -16,10 +16,31 @@ function Toast({ messages }) {
   )
 }
 
+function parseHash() {
+  const m = window.location.hash.match(/^#room\/(.+)$/)
+  return m ? m[1] : null
+}
+
 export default function App() {
-  const [tab, setTab]                   = useState('dashboard')
-  const [selectedRoomId, setSelectedRoomId] = useState(null)
+  const [tab, setTab]                   = useState(() => parseHash() ? 'rooms' : 'dashboard')
+  const [selectedRoomId, setSelectedRoomId] = useState(parseHash)
   const [toasts, setToasts]             = useState([])
+
+  useEffect(() => {
+    function onHashChange() {
+      const id = parseHash()
+      if (id) { setTab('rooms'); setSelectedRoomId(id) }
+      else { setSelectedRoomId(null) }
+    }
+    window.addEventListener('hashchange', onHashChange)
+    return () => window.removeEventListener('hashchange', onHashChange)
+  }, [])
+
+  function openRoom(id) {
+    window.location.hash = id ? `room/${id}` : ''
+    setSelectedRoomId(id)
+    setTab('rooms')
+  }
 
   function toast(text) {
     const id = Date.now()
@@ -29,7 +50,7 @@ export default function App() {
 
   function handleTabChange(id) {
     setTab(id)
-    if (id !== 'rooms') setSelectedRoomId(null)
+    if (id !== 'rooms') { window.location.hash = ''; setSelectedRoomId(null) }
   }
 
   return (
@@ -55,17 +76,17 @@ export default function App() {
         ))}
       </nav>
 
-      {tab === 'dashboard' && <Dashboard />}
+      {tab === 'dashboard' && <Dashboard onRoomOpen={openRoom} />}
 
       {tab === 'rooms' && !selectedRoomId && (
-        <Rooms onRoomSelect={setSelectedRoomId} onToast={toast} />
+        <Rooms onRoomSelect={openRoom} onToast={toast} />
       )}
 
       {tab === 'rooms' && selectedRoomId && (
         <RoomDetail
           key={selectedRoomId}
           roomId={selectedRoomId}
-          onBack={() => setSelectedRoomId(null)}
+          onBack={() => openRoom(null)}
           onToast={toast}
         />
       )}

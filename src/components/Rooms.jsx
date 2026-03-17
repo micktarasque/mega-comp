@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getRooms, addRoom, deleteRoom, updateRoom } from '../db/supabaseDb'
+import { getRooms, addRoom, deleteRoom, updateRoom, markRoomVerified } from '../db/supabaseDb'
 
 const STATUS_META = {
   upcoming:  { label: 'UPCOMING', cls: 'status-upcoming' },
@@ -51,6 +51,7 @@ function CreateRoomForm({ onCreated, onCancel }) {
     e.preventDefault()
     if (!name.trim()) return
     const room = await addRoom(name.trim(), date, desc.trim(), status)
+    if (room?.id) markRoomVerified(room.id)
     onCreated(room?.id ?? null)
   }
 

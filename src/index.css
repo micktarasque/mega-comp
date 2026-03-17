@@ -888,7 +888,7 @@ body {
   text-align: left; transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
   min-width: 160px; position: relative; overflow: hidden;
 }
-.room-sel-btn::before { content: ''; position: absolute; inset: 0; opacity: 0; transition: opacity 0.15s; }
+.room-sel-btn::before { content: ''; position: absolute; inset: 0; opacity: 0; transition: opacity 0.15s; pointer-events: none; }
 .room-sel-btn:hover { border-color: rgba(0,229,255,0.3); }
 .room-sel-btn:hover::before { opacity: 1; background: rgba(0,229,255,0.04); }
 .room-sel-btn.active { border-color: rgba(0,229,255,0.7); box-shadow: 0 0 16px rgba(0,229,255,0.2); background: rgba(0,229,255,0.06); }
@@ -912,6 +912,18 @@ body {
   font-family: 'Courier New', monospace; text-transform: uppercase; flex-shrink: 0;
   text-shadow: 0 0 8px currentColor;
 }
+
+/* room card action buttons */
+.room-sel-action-btn {
+  padding: 0.18rem 0.45rem; border-radius: 2px;
+  border: 1px solid rgba(0,229,255,0.25); background: transparent;
+  color: rgba(0,229,255,0.6); font-size: 0.58rem; font-weight: 900;
+  letter-spacing: 0.1em; cursor: pointer;
+  font-family: 'Courier New', monospace; transition: all 0.15s; white-space: nowrap;
+}
+.room-sel-action-btn:hover { border-color: rgba(0,229,255,0.7); color: var(--arc-cyan); text-shadow: 0 0 6px rgba(0,229,255,0.6); }
+.room-sel-action-btn.edit { border-color: rgba(255,230,0,0.25); color: rgba(255,230,0,0.6); }
+.room-sel-action-btn.edit:hover { border-color: rgba(255,230,0,0.7); color: var(--arc-yellow); text-shadow: 0 0 6px rgba(255,230,0,0.6); }
 
 /* pulse on live rooms */
 .room-sel-btn.sel-active .room-sel-flag { animation: flagPulse 1.6s ease-in-out infinite; }
@@ -962,4 +974,5 @@ body {
 .code-input { text-align: center; font-size: 1.8rem; font-weight: 900; letter-spacing: 0.35em; font-family: monospace; text-transform: uppercase; width: 100%; }
 .code-error { color: #FF4040; font-size: 0.78rem; font-weight: 700; margin-top: 0.6rem; }
 .modal-actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1.25rem; }
+.modal-body { text-align: left; margin-bottom: 0.5rem; }
 

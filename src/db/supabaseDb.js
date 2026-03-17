@@ -118,6 +118,12 @@ export function isRoomVerified(roomId) {
   } catch { return false }
 }
 
+export function markRoomVerified(roomId) {
+  const verified = JSON.parse(sessionStorage.getItem(VERIFIED_KEY) || '{}')
+  verified[roomId] = true
+  sessionStorage.setItem(VERIFIED_KEY, JSON.stringify(verified))
+}
+
 // ── Room games ────────────────────────────────────────────────────────────────
 
 export async function getRoomGames(roomId) {
@@ -182,8 +188,7 @@ export async function deleteGame(id) {
 // ── Achievements ──────────────────────────────────────────────────────────────
 
 export async function getAchievements(roomId) {
-  const { data } = await supabase
-    .from('achievements')
+  const { data } = await db().from('achievements')
     .select('*, achievement_awards(player_id)')
     .eq('room_id', roomId)
   return (data ?? []).map(mapAchievement)
@@ -214,8 +219,7 @@ export async function deleteAchievement(id) {
 }
 
 export async function awardAchievement(achievementId, playerId) {
-  const { data: ach } = await supabase
-    .from('achievements')
+  const { data: ach } = await db().from('achievements')
     .select('awarded_once, achievement_awards(player_id)')
     .eq('id', achievementId).single()
   if (!ach) return { error: 'Achievement not found' }

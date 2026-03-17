@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getRoom, getGames, getRoomGames, getAchievements, updateRoom, isRoomVerified, getRoomPlayers, addRoomPlayer, removeRoomPlayer } from '../db/supabaseDb'
+import { getRoom, getGames, getRoomGames, getAchievements, updateRoom, deleteRoom, isRoomVerified, getRoomPlayers, addRoomPlayer, removeRoomPlayer } from '../db/supabaseDb'
 import RoomSchedule from './RoomSchedule'
 import AchievementManager from './AchievementManager'
 import RoomLeaderboard from './RoomLeaderboard'
@@ -246,11 +246,17 @@ export default function RoomDetail({ roomId, onBack, onToast }) {
   const [tab, setTab]                 = useState('overview')
   const [verified, setVerified]       = useState(() => isRoomVerified(roomId))
   const [showCodeModal, setShowCodeModal] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [copied, setCopied]           = useState(false)
+  const [copiedLink, setCopiedLink]   = useState(false)
 
   async function refresh() {
     const [r, p, g, rg, a] = await Promise.all([
-      getRoom(roomId), getRoomPlayers(roomId), getGames(), getRoomGames(roomId), getAchievements(roomId),
+      getRoom(roomId).catch(e => { console.error('getRoom', e); return null }),
+      getRoomPlayers(roomId).catch(e => { console.error('getRoomPlayers', e); return [] }),
+      getGames().catch(e => { console.error('getGames', e); return [] }),
+      getRoomGames(roomId).catch(e => { console.error('getRoomGames', e); return [] }),
+      getAchievements(roomId).catch(e => { console.error('getAchievements', e); return [] }),
     ])
     setRoom(r); setRoomPlayers(p); setGames(g); setRoomGames(rg); setAchs(a)
   }
@@ -265,10 +271,23 @@ export default function RoomDetail({ roomId, onBack, onToast }) {
   const pending   = roomGames.filter(rg => !games.some(g => g.roomGameId === rg.id)).length
   const unawarded = achs.filter(a => a.earnedByIds.length === 0).length
 
+  function handleCopyLink() {
+    const url = `${window.location.origin}${window.location.pathname}#room/${roomId}`
+    navigator.clipboard?.writeText(url).catch(() => {})
+    setCopiedLink(true)
+    setTimeout(() => setCopiedLink(false), 2000)
+  }
+
   function handleCopyCode() {
     navigator.clipboard?.writeText(room.code ?? '').catch(() => {})
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  async function handleDelete() {
+    await deleteRoom(roomId)
+    onToast('Room permanently deleted')
+    onBack()
   }
 
   return (
@@ -282,10 +301,34 @@ export default function RoomDetail({ roomId, onBack, onToast }) {
         />
       )}
 
+      {showDeleteModal && (
+        <div className="modal-overlay" onClick={() => setShowDeleteModal(false)}>
+          <div className="modal-box" onClick={e => e.stopPropagation()}>
+            <div className="modal-icon">💀</div>
+            <div className="modal-title" style={{ color: '#FF4757' }}>ERASE FROM EXISTENCE?</div>
+            <div className="modal-body">
+              <p style={{ marginBottom: '0.5rem' }}>You are about to wipe <strong>{room.name}</strong> from the face of the earth.</p>
+              <p style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>
+                Every player, every score, every glorious victory and humiliating defeat — gone. Forever. No takebacks. No mercy.
+              </p>
+            </div>
+            <div className="modal-actions">
+              <button className="btn btn-ghost" onClick={() => setShowDeleteModal(false)}>Spare It</button>
+              <button className="btn btn-danger" onClick={handleDelete}>💀 Obliterate</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Back + header */}
       <div className="room-detail-topbar">
         <button className="btn btn-ghost btn-sm back-btn" onClick={onBack}>← Rooms</button>
-        <div className={`room-status-badge ${meta.cls}`}>{meta.label}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <button className="btn btn-ghost btn-sm" onClick={handleCopyLink} style={{ fontSize: '0.72rem' }}>
+            {copiedLink ? '✓ Copied!' : '🔗 Share'}
+          </button>
+          <div className={`room-status-badge ${meta.cls}`}>{meta.label}</div>
+        </div>
       </div>
 
       <div className="room-detail-header">
@@ -361,6 +404,18 @@ export default function RoomDetail({ roomId, onBack, onToast }) {
           <RoomLeaderboard room={room} key={`standings-${roomId}`} />
         )}
       </div>
+
+      {verified && (
+        <div style={{ textAlign: 'center', marginTop: '3rem', paddingBottom: '2rem' }}>
+          <button
+            className="btn btn-danger btn-sm"
+            style={{ opacity: 0.6 }}
+            onClick={() => setShowDeleteModal(true)}
+          >
+            💀 Erase Room
+          </button>
+        </div>
+      )}
     </div>
   )
 }
