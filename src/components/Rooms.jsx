@@ -130,12 +130,12 @@ export default function Rooms({ onRoomSelect, onToast }) {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <div>
+      <div className="rooms-page-header">
+        <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontWeight: 800, fontSize: '1.1rem' }}>Competition Rooms</div>
           <div style={{ color: 'var(--muted)', fontSize: '0.8rem', marginTop: '0.2rem' }}>Structured game nights with custom scoring &amp; achievements</div>
         </div>
-        <button className="btn btn-primary" onClick={() => setCreating(true)}>+ New Room</button>
+        <button className="btn btn-primary" style={{ flexShrink: 0 }} onClick={() => setCreating(true)}>+ New Room</button>
       </div>
 
       {creating && (
