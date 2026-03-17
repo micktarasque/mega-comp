@@ -974,7 +974,7 @@ body {
 @keyframes flagPulse { 0%,100% { transform: scale(1); filter: drop-shadow(0 0 4px #39FF14); } 50% { transform: scale(1.2); filter: drop-shadow(0 0 10px #39FF14); } }
 
 /* ── Dashboard room header ─────────────────────── */
-.dashboard-room-header { display: flex; align-items: baseline; gap: 1rem; margin-bottom: 1rem; padding: 0 0.25rem; flex-wrap: wrap; }
+.dashboard-room-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; padding: 0 0.25rem; flex-wrap: wrap; }
 .drh-name {
   font-size: 1.4rem; font-weight: 900; letter-spacing: -0.01em;
   font-family: 'Courier New', monospace;
@@ -1019,4 +1019,115 @@ body {
 .code-error { color: #FF4040; font-size: 0.78rem; font-weight: 700; margin-top: 0.6rem; }
 .modal-actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1.25rem; }
 .modal-body { text-align: left; margin-bottom: 0.5rem; }
+
+/* ── Results trigger button ── */
+.btn-results-trigger {
+  display: flex; align-items: center; gap: 0.55rem;
+  padding: 0.6rem 1rem;
+  background: linear-gradient(135deg, rgba(255,0,110,0.15), rgba(255,230,0,0.1));
+  border: 1px solid rgba(255,0,110,0.5);
+  border-radius: var(--radius);
+  cursor: pointer; color: #FF006E; flex-shrink: 0;
+  font-family: 'Courier New', monospace; font-size: 0.65rem; font-weight: 900;
+  letter-spacing: 0.12em; line-height: 1.3;
+  text-shadow: 0 0 10px rgba(255,0,110,0.6);
+  box-shadow: 0 0 16px rgba(255,0,110,0.2), inset 0 0 10px rgba(255,0,110,0.05);
+  transition: all 0.18s;
+}
+.btn-results-trigger:hover {
+  border-color: rgba(255,0,110,0.9);
+  box-shadow: 0 0 28px rgba(255,0,110,0.4), inset 0 0 14px rgba(255,0,110,0.1);
+  color: #ff3385;
+}
+.brt-icon { font-size: 1.4rem; line-height: 1; }
+.brt-text { text-align: left; }
+
+/* ── Results modal ── */
+.results-overlay {
+  position: fixed; inset: 0; z-index: 1100;
+  background: rgba(0,0,0,0.88);
+  backdrop-filter: blur(10px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 1rem; overflow-y: auto;
+}
+.results-modal {
+  background: var(--card);
+  border: 1px solid rgba(0,229,255,0.25);
+  border-radius: var(--radius);
+  box-shadow: 0 0 60px rgba(0,229,255,0.12), 0 30px 80px rgba(0,0,0,0.7);
+  width: 100%; max-width: 520px;
+  padding: 1.75rem 1.75rem 1.5rem;
+  position: relative;
+  overflow: hidden;
+}
+.results-modal::before {
+  content: ''; position: absolute; inset: 0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.06) 3px, rgba(0,0,0,0.06) 4px);
+  pointer-events: none; z-index: 0;
+}
+.results-modal > * { position: relative; z-index: 1; }
+
+.results-header { text-align: center; margin-bottom: 1.5rem; position: relative; }
+.results-title {
+  font-family: 'Courier New', monospace; font-size: 2rem; font-weight: 900;
+  letter-spacing: 0.25em;
+  background: linear-gradient(90deg, var(--arc-cyan), var(--arc-pink), var(--arc-yellow));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  animation: neon-flicker 4s infinite;
+}
+.results-subtitle { font-size: 0.75rem; color: var(--muted); letter-spacing: 0.1em; margin-top: 0.2rem; font-family: 'Courier New', monospace; }
+.results-close {
+  position: absolute; top: 0; right: 0;
+  background: none; border: none; color: var(--muted); font-size: 1rem; cursor: pointer; padding: 0.25rem;
+}
+.results-close:hover { color: var(--text); }
+
+/* Winner hero */
+.results-winner {
+  text-align: center; padding: 1.5rem 1rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--wcolor, #7C6FFF);
+  background: color-mix(in srgb, var(--wcolor, #7C6FFF) 6%, transparent);
+  margin-bottom: 1.25rem; position: relative; overflow: hidden;
+}
+.rw-glow { position: absolute; top: -40px; left: 50%; transform: translateX(-50%); width: 200px; height: 200px; border-radius: 50%; opacity: 0.12; filter: blur(40px); pointer-events: none; }
+.rw-crown { font-size: 2rem; line-height: 1; margin-bottom: 0.4rem; filter: drop-shadow(0 0 12px rgba(255,215,0,0.8)); }
+.rw-avatar {
+  width: 72px; height: 72px; border-radius: 50%; border: 2px solid; margin: 0 auto 0.6rem;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.5rem; font-weight: 900;
+}
+.rw-name { font-size: 1.6rem; font-weight: 900; font-family: 'Courier New', monospace; letter-spacing: 0.06em; }
+.rw-title { font-size: 0.65rem; font-weight: 900; letter-spacing: 0.22em; color: var(--muted); margin: 0.2rem 0 0.6rem; font-family: 'Courier New', monospace; }
+.rw-pts { font-family: 'Courier New', monospace; font-size: 1.05rem; font-weight: 900; }
+.rw-pts-sep { color: var(--muted); }
+.rw-pts-total { color: var(--muted); font-size: 0.85rem; }
+.rw-quip { font-size: 0.78rem; color: var(--muted); font-style: italic; margin-top: 0.65rem; }
+
+/* Bar chart */
+.results-chart { margin-bottom: 1.25rem; }
+.results-chart-legend { display: flex; align-items: center; gap: 0.3rem; font-size: 0.68rem; color: var(--muted); margin-bottom: 0.75rem; font-family: 'Courier New', monospace; }
+.rc-legend-dot { display: inline-block; width: 8px; height: 8px; border-radius: 2px; }
+.rc-row { display: grid; grid-template-columns: 2rem 7rem 1fr 3rem; align-items: center; gap: 0.5rem; margin-bottom: 0.55rem; }
+.rc-rank { font-size: 0.9rem; text-align: center; }
+.rc-name { font-size: 0.82rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: 'Courier New', monospace; }
+.rc-bar-wrap { min-width: 0; }
+.rc-bar-track { height: 18px; background: rgba(255,255,255,0.05); border-radius: 4px; overflow: hidden; display: flex; }
+.rc-bar-comp { height: 100%; transition: width 1s cubic-bezier(0.34,1.56,0.64,1); }
+.rc-bar-ach  { height: 100%; background: linear-gradient(90deg, #FFD700cc, #FFD700); transition: width 1.2s cubic-bezier(0.34,1.56,0.64,1); }
+.rc-total { font-family: 'Courier New', monospace; font-size: 0.82rem; font-weight: 900; text-align: right; }
+
+/* Loser shame */
+.results-loser {
+  display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;
+  padding: 0.65rem 0.85rem; margin-bottom: 1rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255,71,87,0.3);
+  background: rgba(255,71,87,0.05);
+  font-size: 0.8rem;
+}
+.rl-badge { font-size: 0.65rem; font-weight: 900; letter-spacing: 0.1em; color: #FF4757; font-family: 'Courier New', monospace; }
+.rl-name { font-weight: 900; }
+.rl-pts { color: var(--muted); font-size: 0.75rem; margin-left: auto; font-family: 'Courier New', monospace; }
+.rl-quip { width: 100%; color: var(--muted); font-style: italic; font-size: 0.72rem; margin-top: 0.1rem; }
 

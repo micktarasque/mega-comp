@@ -769,6 +769,106 @@ function RoomHistory({ games, onDelete }) {
   )
 }
 
+// ── Results modal ─────────────────────────────────────────────────────────────
+const WINNER_LINES = [
+  'Undefeated. Untouchable. Insufferable.',
+  'Please hold your applause. Actually, don\'t.',
+  'The rest of you were just warming the seat.',
+  'Rumour has it they let everyone else win. Rumour is wrong.',
+  'Already updating their bio.',
+]
+const LOSER_LINES = [
+  'Better luck next time. And the time after that.',
+  'Participation trophy is in the mail. Maybe.',
+  'The group chat will remember this.',
+  'Not last place in life. Just here.',
+  'They tried their best. This was their best.',
+]
+
+function ResultsModal({ stats, roomName, onClose }) {
+  const winner = stats[0]
+  const loser  = stats[stats.length - 1]
+  const maxPts = winner?.totalPoints || 1
+
+  const winnerLine = useMemo(() => WINNER_LINES[Math.floor(Math.random() * WINNER_LINES.length)], [])
+  const loserLine  = useMemo(() => LOSER_LINES[Math.floor(Math.random() * LOSER_LINES.length)], [])
+
+  return (
+    <div className="results-overlay" onClick={onClose}>
+      <div className="results-modal" onClick={e => e.stopPropagation()}>
+
+        {/* Header */}
+        <div className="results-header">
+          <div className="results-title">GAME OVER</div>
+          <div className="results-subtitle">{roomName} — Final Standings</div>
+          <button className="results-close" onClick={onClose}>✕</button>
+        </div>
+
+        {/* Winner hero */}
+        {winner && (
+          <div className="results-winner" style={{ '--wcolor': winner.color }}>
+            <div className="rw-glow" style={{ background: winner.color }} />
+            <div className="rw-crown">👑</div>
+            <div className="rw-avatar" style={{ background: winner.color + '20', borderColor: winner.color, boxShadow: `0 0 40px ${winner.color}66` }}>
+              <span style={{ color: winner.color }}>{initials(winner.name)}</span>
+            </div>
+            <div className="rw-name" style={{ color: winner.color, textShadow: `0 0 30px ${winner.color}88` }}>{winner.name}</div>
+            <div className="rw-title">CHAMPION OF THE NIGHT</div>
+            <div className="rw-pts">
+              <span style={{ color: winner.color }}>{winner.competitionPoints}</span>
+              <span className="rw-pts-sep"> + </span>
+              <span style={{ color: '#FFD700' }}>{winner.achievementPoints}</span>
+              <span className="rw-pts-total"> = {winner.totalPoints} PTS</span>
+            </div>
+            <div className="rw-quip">"{winnerLine}"</div>
+          </div>
+        )}
+
+        {/* Stacked bar chart */}
+        <div className="results-chart">
+          <div className="results-chart-legend">
+            <span className="rc-legend-dot" style={{ background: 'var(--arc-cyan)' }} /> Comp pts
+            <span className="rc-legend-dot" style={{ background: '#FFD700', marginLeft: '0.75rem' }} /> Achievement pts
+          </div>
+          {stats.map((p, i) => {
+            const compPct = (p.competitionPoints / maxPts) * 100
+            const achPct  = (p.achievementPoints  / maxPts) * 100
+            return (
+              <div key={p.id} className="rc-row">
+                <div className="rc-rank">
+                  {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}
+                </div>
+                <div className="rc-name" style={{ color: p.color }}>{p.name}</div>
+                <div className="rc-bar-wrap">
+                  <div className="rc-bar-track">
+                    <div className="rc-bar-comp" style={{ width: `${compPct}%`, background: p.color, boxShadow: `0 0 8px ${p.color}66` }} />
+                    <div className="rc-bar-ach"  style={{ width: `${achPct}%`,  boxShadow: '0 0 8px rgba(255,215,0,0.5)' }} />
+                  </div>
+                </div>
+                <div className="rc-total" style={{ color: p.color }}>{p.totalPoints}</div>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Loser shame */}
+        {stats.length >= 2 && loser.id !== winner.id && (
+          <div className="results-loser">
+            <span className="rl-badge">💀 HALL OF SHAME</span>
+            <span className="rl-name" style={{ color: '#FF4757' }}>{loser.name}</span>
+            <span className="rl-pts">{loser.totalPoints} pts</span>
+            <span className="rl-quip">"{loserLine}"</span>
+          </div>
+        )}
+
+        <button className="btn btn-ghost" style={{ width: '100%', marginTop: '0.5rem', fontFamily: "'Courier New', monospace", letterSpacing: '0.1em' }} onClick={onClose}>
+          ► PRESS ANY KEY TO CONTINUE ◄
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ── Room selector strip ──────────────────────────────────────────────────────
 const STATUS_META = {
   active:    { color: '#43E97B', flag: '🏁', label: 'GREEN FLAG',   arcade: 'GO!',      cls: 'sel-active' },
@@ -966,6 +1066,7 @@ export default function Dashboard({ onRoomOpen }) {
   const [games, setGames]               = useState([])
   const [roomGames, setRoomGames]       = useState([])
   const [achievements, setAchievements] = useState([])
+  const [showResults, setShowResults]   = useState(false)
 
   function selectRoom(id) {
     setSelectedRoomId(id)
@@ -1031,17 +1132,29 @@ export default function Dashboard({ onRoomOpen }) {
     <div className="cockpit">
       <div className="cockpit-grid-bg" />
 
+      {showResults && stats.length > 0 && (
+        <ResultsModal stats={stats} roomName={selectedRoom?.name ?? ''} onClose={() => setShowResults(false)} />
+      )}
+
       <RoomSelector rooms={rooms} selectedId={selectedRoomId} onSelect={selectRoom} onEdit={onRoomOpen} />
 
       {selectedRoom && (
         <div className="dashboard-room-header">
-          <div className="drh-name">{selectedRoom.name}</div>
-          <div className="drh-date">
-            {new Date(selectedRoom.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' })}
+          <div style={{ flex: 1 }}>
+            <div className="drh-name">{selectedRoom.name}</div>
+            <div className="drh-date">
+              {new Date(selectedRoom.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' })}
+            </div>
+            <div className="drh-status" style={{ color: STATUS_COLORS[selectedRoom.status] }}>
+              {STATUS_LABELS[selectedRoom.status]}
+            </div>
           </div>
-          <div className="drh-status" style={{ color: STATUS_COLORS[selectedRoom.status] }}>
-            {STATUS_LABELS[selectedRoom.status]}
-          </div>
+          {stats.length > 0 && (
+            <button className="btn-results-trigger" onClick={() => setShowResults(true)}>
+              <span className="brt-icon">🏁</span>
+              <span className="brt-text">FINAL<br/>RESULTS</span>
+            </button>
+          )}
         </div>
       )}
 
