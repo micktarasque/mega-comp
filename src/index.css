@@ -495,6 +495,10 @@ body {
 .input, .select { background: var(--surface); border: 1px solid var(--border2); border-radius: var(--radius-sm); color: var(--text); font-family: inherit; font-size: 0.9rem; padding: 0.65rem 0.9rem; outline: none; transition: border-color 0.15s; width: 100%; }
 .input:focus, .select:focus { border-color: #7C6FFF; }
 .select option { background: var(--card); }
+/* Native date input — force dark mode so the calendar popup matches */
+.date-input { color-scheme: dark; cursor: pointer; }
+.date-input::-webkit-calendar-picker-indicator { filter: invert(0.7) sepia(1) saturate(3) hue-rotate(180deg); cursor: pointer; opacity: 0.8; }
+.date-input::-webkit-calendar-picker-indicator:hover { opacity: 1; }
 .participants-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 0.5rem; }
 .participant-chip { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--border2); background: var(--surface); cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: all 0.15s; user-select: none; font-family: inherit; }
 .participant-chip.selected { border-color: currentColor; background: rgba(124,111,255,0.08); }

@@ -1,9 +1,20 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-)
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+  console.error('[mega-comp] Missing Supabase env vars. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.')
+}
+
+const _client = (SUPABASE_URL && SUPABASE_KEY)
+  ? createClient(SUPABASE_URL, SUPABASE_KEY)
+  : null
+
+function db() {
+  if (!_client) throw new Error('Supabase not configured — check VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY')
+  return _client
+}
 
 export const POINTS      = { 1: 3, 2: 2, 3: 1, 0: 0 }
 export const PLACE_LABEL = { 1: '1st', 2: '2nd', 3: '3rd', 0: 'Loser' }
@@ -43,35 +54,35 @@ function mapAchievement(a) {
 // ── Room players ──────────────────────────────────────────────────────────────
 
 export async function getRoomPlayers(roomId) {
-  const { data } = await supabase.from('room_players').select('*').eq('room_id', roomId).order('created_at')
+  const { data } = await db().from('room_players').select('*').eq('room_id', roomId).order('created_at')
   return (data ?? []).map(mapRoomPlayer)
 }
 
 export async function addRoomPlayer(roomId, name, color) {
-  const { data } = await supabase.from('room_players').insert({ room_id: roomId, name, color }).select().single()
+  const { data } = await db().from('room_players').insert({ room_id: roomId, name, color }).select().single()
   return data ? mapRoomPlayer(data) : null
 }
 
 export async function removeRoomPlayer(id) {
-  await supabase.from('room_players').delete().eq('id', id)
+  await db().from('room_players').delete().eq('id', id)
 }
 
 // ── Rooms ─────────────────────────────────────────────────────────────────────
 
 export async function getRooms() {
-  const { data } = await supabase.from('rooms').select('*').order('date', { ascending: false })
+  const { data } = await db().from('rooms').select('*').order('date', { ascending: false })
   return (data ?? []).map(mapRoom)
 }
 
 export async function getRoom(id) {
-  const { data } = await supabase.from('rooms').select('*').eq('id', id).single()
+  const { data } = await db().from('rooms').select('*').eq('id', id).single()
   return data ? mapRoom(data) : null
 }
 
 export async function addRoom(name, date, description, status = 'upcoming') {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
   const code  = Array.from({ length: 5 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
-  const { data } = await supabase.from('rooms').insert({
+  const { data } = await db().from('rooms').insert({
     name, date, description, status, code,
   }).select().single()
   return data ? mapRoom(data) : null
@@ -83,17 +94,17 @@ export async function updateRoom(id, updates) {
   if (updates.date        !== undefined) mapped.date        = updates.date
   if (updates.description !== undefined) mapped.description = updates.description
   if (updates.status      !== undefined) mapped.status      = updates.status
-  await supabase.from('rooms').update(mapped).eq('id', id)
+  await db().from('rooms').update(mapped).eq('id', id)
 }
 
 export async function deleteRoom(id) {
-  await supabase.from('rooms').delete().eq('id', id)
+  await db().from('rooms').delete().eq('id', id)
 }
 
 // ── Room code verification ────────────────────────────────────────────────────
 
 export async function verifyRoomCode(roomId, code) {
-  const { data: ok, error } = await supabase.rpc('check_room_code', { p_room_id: roomId, p_code: code })
+  const { data: ok, error } = await db().rpc('check_room_code', { p_room_id: roomId, p_code: code })
   if (error || !ok) return { error: 'Incorrect code' }
   const verified = JSON.parse(sessionStorage.getItem(VERIFIED_KEY) || '{}')
   verified[roomId] = true
@@ -110,13 +121,13 @@ export function isRoomVerified(roomId) {
 // ── Room games ────────────────────────────────────────────────────────────────
 
 export async function getRoomGames(roomId) {
-  const { data } = await supabase.from('room_games')
+  const { data } = await db().from('room_games')
     .select('*').eq('room_id', roomId).order('order', { ascending: true })
   return (data ?? []).map(mapRoomGame)
 }
 
 export async function addRoomGame(roomId, { name, description, pointsMode, customPoints, order }) {
-  const { data } = await supabase.from('room_games').insert({
+  const { data } = await db().from('room_games').insert({
     room_id: roomId, name, description,
     points_mode: pointsMode,
     custom_points: pointsMode === 'custom' ? customPoints : null,
@@ -133,22 +144,22 @@ export async function updateRoomGame(id, updates) {
     mapped.points_mode   = updates.pointsMode
     mapped.custom_points = updates.pointsMode === 'custom' ? (updates.customPoints ?? null) : null
   }
-  await supabase.from('room_games').update(mapped).eq('id', id)
+  await db().from('room_games').update(mapped).eq('id', id)
 }
 
 export async function deleteRoomGame(id) {
-  await supabase.from('room_games').delete().eq('id', id)
+  await db().from('room_games').delete().eq('id', id)
 }
 
 // ── Games ─────────────────────────────────────────────────────────────────────
 
 export async function getGames() {
-  const { data } = await supabase.from('game_history').select('*')
+  const { data } = await db().from('game_history').select('*')
   return (data ?? []).map(mapGame)
 }
 
 export async function addGame(gameType, placements, date, roomId = null, roomGameId = null) {
-  const { data: game } = await supabase.from('games').insert({
+  const { data: game } = await db().from('games').insert({
     game_type:    gameType,
     played_on:    date || new Date().toISOString().split('T')[0],
     room_id:      roomId ?? null,
@@ -157,7 +168,7 @@ export async function addGame(gameType, placements, date, roomId = null, roomGam
 
   if (!game) return null
 
-  await supabase.from('game_placements').insert(
+  await db().from('game_placements').insert(
     placements.map(p => ({ game_id: game.id, player_id: p.playerId, place: p.place }))
   )
 
@@ -165,7 +176,7 @@ export async function addGame(gameType, placements, date, roomId = null, roomGam
 }
 
 export async function deleteGame(id) {
-  await supabase.from('games').delete().eq('id', id)
+  await db().from('games').delete().eq('id', id)
 }
 
 // ── Achievements ──────────────────────────────────────────────────────────────
@@ -179,7 +190,7 @@ export async function getAchievements(roomId) {
 }
 
 export async function addAchievement(roomId, { name, description, icon, pointValue, awardedOnce }) {
-  const { data } = await supabase.from('achievements').insert({
+  const { data } = await db().from('achievements').insert({
     room_id: roomId, name, description,
     icon:         icon || '⭐',
     point_value:  Number(pointValue) || 1,
@@ -189,7 +200,7 @@ export async function addAchievement(roomId, { name, description, icon, pointVal
 }
 
 export async function updateAchievement(id, updates) {
-  await supabase.from('achievements').update({
+  await db().from('achievements').update({
     name:        updates.name,
     description: updates.description,
     icon:        updates.icon,
@@ -199,7 +210,7 @@ export async function updateAchievement(id, updates) {
 }
 
 export async function deleteAchievement(id) {
-  await supabase.from('achievements').delete().eq('id', id)
+  await db().from('achievements').delete().eq('id', id)
 }
 
 export async function awardAchievement(achievementId, playerId) {
@@ -210,14 +221,14 @@ export async function awardAchievement(achievementId, playerId) {
   if (!ach) return { error: 'Achievement not found' }
   if (ach.awarded_once && ach.achievement_awards.length > 0) return { error: 'Already awarded' }
   if (ach.achievement_awards.some(x => x.player_id === playerId)) return { error: 'Player already has this' }
-  const { error } = await supabase.from('achievement_awards')
+  const { error } = await db().from('achievement_awards')
     .insert({ achievement_id: achievementId, player_id: playerId })
   if (error) return { error: error.message }
   return { ok: true }
 }
 
 export async function revokeAchievement(achievementId, playerId) {
-  await supabase.from('achievement_awards')
+  await db().from('achievement_awards')
     .delete().eq('achievement_id', achievementId).eq('player_id', playerId)
 }
 
@@ -225,9 +236,9 @@ export async function revokeAchievement(achievementId, playerId) {
 
 export async function getRoomStats(roomId) {
   const [{ data: statsData }, { data: achData }, { data: gamesData }] = await Promise.all([
-    supabase.from('room_player_stats').select('*').eq('room_id', roomId),
-    supabase.from('achievements').select('*, achievement_awards(player_id)').eq('room_id', roomId),
-    supabase.from('game_history').select('*').eq('room_id', roomId),
+    db().from('room_player_stats').select('*').eq('room_id', roomId),
+    db().from('achievements').select('*, achievement_awards(player_id)').eq('room_id', roomId),
+    db().from('game_history').select('*').eq('room_id', roomId),
   ])
 
   const achs  = (achData ?? []).map(mapAchievement)

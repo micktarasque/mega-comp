@@ -41,44 +41,6 @@ function RoomCard({ room, onOpen, onDelete, onStatusChange }) {
   )
 }
 
-const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
-
-function daysInMonth(month, year) {
-  return new Date(year, month, 0).getDate()
-}
-
-function DatePicker({ value, onChange }) {
-  const [y, m, d] = value.split('-').map(Number)
-  const maxDay = daysInMonth(m, y)
-  const days = Array.from({ length: maxDay }, (_, i) => i + 1)
-  const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() + i - 1)
-
-  function update(field, val) {
-    let ny = y, nm = m, nd = d
-    if (field === 'y') ny = Number(val)
-    if (field === 'm') nm = Number(val)
-    if (field === 'd') nd = Number(val)
-    const cap = daysInMonth(nm, ny)
-    if (nd > cap) nd = cap
-    onChange(`${ny}-${String(nm).padStart(2,'0')}-${String(nd).padStart(2,'0')}`)
-  }
-
-  const selStyle = { flex: 1 }
-  return (
-    <div style={{ display: 'flex', gap: '0.5rem' }}>
-      <select className="select" style={selStyle} value={m} onChange={e => update('m', e.target.value)}>
-        {MONTHS.map((name, i) => <option key={i+1} value={i+1}>{name}</option>)}
-      </select>
-      <select className="select" style={{ flex: '0 0 5rem' }} value={d} onChange={e => update('d', e.target.value)}>
-        {days.map(n => <option key={n} value={n}>{n}</option>)}
-      </select>
-      <select className="select" style={{ flex: '0 0 6rem' }} value={y} onChange={e => update('y', e.target.value)}>
-        {years.map(n => <option key={n} value={n}>{n}</option>)}
-      </select>
-    </div>
-  )
-}
-
 function CreateRoomForm({ onCreated, onCancel }) {
   const [name, setName]     = useState('')
   const [date, setDate]     = useState(new Date().toISOString().split('T')[0])
@@ -104,7 +66,7 @@ function CreateRoomForm({ onCreated, onCancel }) {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
           <div className="field">
             <label className="label">Date</label>
-            <DatePicker value={date} onChange={setDate} />
+            <input type="date" className="input date-input" value={date} onChange={e => setDate(e.target.value)} />
           </div>
           <div className="field">
             <label className="label">Status</label>
