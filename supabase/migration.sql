@@ -219,9 +219,7 @@ CREATE POLICY "write_game_placements"    ON game_placements    FOR ALL TO anon, 
 CREATE POLICY "write_achievements"       ON achievements       FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "write_achievement_awards" ON achievement_awards FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
 
--- Hide rooms.code from all client roles — verification goes through check_room_code()
-REVOKE SELECT ON rooms FROM anon, authenticated;
-GRANT  SELECT (id, name, date, description, status, created_at)
-  ON rooms TO anon, authenticated;
+-- Grant table-level access (PostgREST requires this; column-level grants alone cause permission denied)
+GRANT SELECT ON rooms TO anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION check_room_code(UUID, TEXT) TO anon, authenticated;
