@@ -770,6 +770,21 @@ body {
   box-shadow: 0 0 40px rgba(0,229,255,0.04), inset 0 0 60px rgba(0,0,0,0.3);
 }
 
+/* HUD corner brackets */
+.neural-corner {
+  position: absolute;
+  width: 14px; height: 14px;
+  border-color: rgba(0,229,255,0.45);
+  border-style: solid;
+  z-index: 4; pointer-events: none;
+  transition: border-color 0.3s;
+}
+.neural-corner.tl { top: 7px;    left: 7px;  border-width: 1.5px 0 0 1.5px; }
+.neural-corner.tr { top: 7px;    right: 7px; border-width: 1.5px 1.5px 0 0; }
+.neural-corner.bl { bottom: 7px; left: 7px;  border-width: 0 0 1.5px 1.5px; }
+.neural-corner.br { bottom: 7px; right: 7px; border-width: 0 1.5px 1.5px 0; }
+.neural-map:hover .neural-corner { border-color: rgba(0,229,255,0.75); }
+
 /* SVG overlay — spans all columns/rows */
 .neural-svg {
   position: absolute; top: 0; left: 0;
@@ -816,6 +831,49 @@ body {
   white-space: nowrap;
 }
 
+/* 3-section header layout */
+.neural-header-left  { display: flex; flex-direction: column; gap: 0.28rem; align-items: flex-start; }
+.neural-header-mid   { display: flex; flex-direction: column; gap: 0.15rem; align-items: center; }
+.neural-header-right { display: flex; flex-direction: column; gap: 0.28rem; align-items: flex-end; }
+
+/* Stat pills */
+.neural-stat-pill {
+  font-family: 'Courier New', monospace;
+  font-size: 0.52rem; font-weight: 900;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 0.15rem 0.5rem; border-radius: 3px;
+  border: 1px solid rgba(0,229,255,0.25);
+  color: var(--arc-cyan);
+  background: rgba(0,229,255,0.07);
+  white-space: nowrap;
+}
+.neural-stat-pill.gold {
+  border-color: rgba(255,215,0,0.28);
+  color: #FFD700;
+  background: rgba(255,215,0,0.07);
+}
+
+/* Centre title */
+.neural-title-main {
+  font-family: 'Courier New', monospace;
+  font-size: 0.7rem; font-weight: 900;
+  letter-spacing: 0.22em; text-transform: uppercase;
+  color: rgba(0,229,255,0.85);
+  text-shadow: 0 0 12px rgba(0,229,255,0.5), 0 0 28px rgba(0,229,255,0.2);
+  white-space: nowrap;
+}
+.neural-title-sub {
+  font-family: 'Courier New', monospace;
+  font-size: 0.48rem; font-weight: 700;
+  letter-spacing: 0.2em; text-transform: uppercase;
+  color: rgba(0,229,255,0.5);
+  animation: neural-title-pulse 3s ease-in-out infinite;
+}
+@keyframes neural-title-pulse {
+  0%, 100% { opacity: 0.5; }
+  50%       { opacity: 1;   }
+}
+
 /* Columns */
 .neural-col { display: flex; flex-direction: column; gap: 0.35rem; position: relative; z-index: 1; }
 .neural-col-games { grid-column: 1; }
@@ -842,7 +900,15 @@ body {
 .game-node.done    { border-color: rgba(67,233,123,0.2); opacity: 0.72; }
 .game-node.pending { border-color: rgba(0,229,255,0.15); }
 .game-node:hover   { border-color: rgba(0,229,255,0.35); background: rgba(0,229,255,0.03); }
-.ach-node.claimed  { }
+.ach-node.claimed  {
+  border-color: rgba(255,215,0,0.35);
+  background: rgba(255,215,0,0.04);
+  animation: ach-claimed-glow 2.5s ease-in-out infinite;
+}
+@keyframes ach-claimed-glow {
+  0%, 100% { border-color: rgba(255,215,0,0.25); box-shadow: none; }
+  50%       { border-color: rgba(255,215,0,0.55); box-shadow: 0 0 12px rgba(255,215,0,0.1); }
+}
 .ach-node.free     { border-style: dashed; border-color: rgba(255,255,255,0.1); opacity: 0.82; }
 .ach-node:hover    { border-color: rgba(255,215,0,0.3); background: rgba(255,215,0,0.03); }
 
@@ -857,6 +923,20 @@ body {
 }
 .nn-connector.right { right: -4px; top: 50%; transform: translateY(-50%); }
 .nn-connector.left  { left:  -4px; top: 50%; transform: translateY(-50%); }
+.nn-connector.active  { animation: nn-pulse-cyan 2s ease-in-out infinite; }
+.nn-connector.claimed {
+  border-color: #FFD700;
+  box-shadow: 0 0 5px rgba(255,215,0,0.7), 0 0 12px rgba(255,215,0,0.3);
+  animation: nn-pulse-gold 1.5s ease-in-out infinite;
+}
+@keyframes nn-pulse-cyan {
+  0%, 100% { box-shadow: 0 0 5px rgba(0,229,255,0.6), 0 0 10px rgba(0,229,255,0.25); }
+  50%       { box-shadow: 0 0 8px rgba(0,229,255,1),   0 0 20px rgba(0,229,255,0.5);  }
+}
+@keyframes nn-pulse-gold {
+  0%, 100% { box-shadow: 0 0 5px rgba(255,215,0,0.6), 0 0 10px rgba(255,215,0,0.25); }
+  50%       { box-shadow: 0 0 10px rgba(255,215,0,1),  0 0 22px rgba(255,215,0,0.5);  }
+}
 
 /* Node content */
 .nn-order { font-family: 'Courier New', monospace; font-size: 0.62rem; color: var(--muted-fg); min-width: 1.6rem; flex-shrink: 0; }
