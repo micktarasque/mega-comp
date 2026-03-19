@@ -60,6 +60,7 @@ CREATE UNIQUE INDEX idx_one_place_per_game
 CREATE TABLE achievements (
   id           UUID     PRIMARY KEY DEFAULT gen_random_uuid(),
   room_id      UUID     NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+  room_game_id UUID     REFERENCES room_games(id) ON DELETE SET NULL,
   name         TEXT     NOT NULL,
   description  TEXT,
   icon         TEXT     NOT NULL DEFAULT '⭐',
@@ -231,3 +232,7 @@ GRANT SELECT ON game_history       TO anon, authenticated;
 GRANT SELECT ON room_player_stats  TO anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION check_room_code(UUID, TEXT) TO anon, authenticated;
+
+-- ── Incremental: link achievements to scheduled games ──────────────────────────
+-- Run this if the achievements table already exists without room_game_id:
+-- ALTER TABLE achievements ADD COLUMN IF NOT EXISTS room_game_id UUID REFERENCES room_games(id) ON DELETE SET NULL;

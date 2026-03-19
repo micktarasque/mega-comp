@@ -120,7 +120,7 @@ function LogResultInline({ room, roomGame, players, onDone, onToast }) {
 }
 
 // Single scheduled game card
-function RoomGameCard({ roomGame, room, players, allGames, onUpdated, onToast, verified, onNeedCode }) {
+function RoomGameCard({ roomGame, room, players, allGames, linkedAchs, onUpdated, onToast, verified, onNeedCode }) {
   const [logging, setLogging]   = useState(false)
   const [editing, setEditing]   = useState(false)
   const [editData, setEditData] = useState({ ...roomGame })
@@ -206,6 +206,26 @@ function RoomGameCard({ roomGame, room, players, allGames, onUpdated, onToast, v
 
       {roomGame.description && (
         <div className="sgc-desc">{roomGame.description}</div>
+      )}
+
+      {/* Achievements available for this game */}
+      {linkedAchs && linkedAchs.length > 0 && (
+        <div className="sgc-achs">
+          <div className="sgc-achs-label">Achievements up for grabs</div>
+          <div className="sgc-achs-list">
+            {linkedAchs.map(a => {
+              const claimed = a.earnedByIds.length > 0
+              return (
+                <div key={a.id} className={`sgc-ach-pill ${claimed ? 'claimed' : ''}`}>
+                  <span>{a.icon}</span>
+                  <span className="sgc-ach-name">{a.name}</span>
+                  <span className="sgc-ach-pts">+{a.pointValue}</span>
+                  {claimed && <span className="sgc-ach-claimed">✓</span>}
+                </div>
+              )
+            })}
+          </div>
+        </div>
       )}
 
       {roomGame.pointsMode === 'custom' && roomGame.customPoints && (
@@ -314,7 +334,7 @@ function AddGameSlotForm({ roomId, currentCount, onAdded, onCancel }) {
   )
 }
 
-export default function RoomSchedule({ room, roomPlayers, onToast, verified, onNeedCode }) {
+export default function RoomSchedule({ room, roomPlayers, achievements = [], onToast, verified, onNeedCode }) {
   const [roomGames, setRoomGames] = useState([])
   const [allGames, setAllGames]   = useState([])
   const [addingSlot, setAddingSlot] = useState(false)
@@ -359,6 +379,7 @@ export default function RoomSchedule({ room, roomPlayers, onToast, verified, onN
             room={room}
             players={roomPlayers}
             allGames={allGames}
+            linkedAchs={achievements.filter(a => a.roomGameId === rg.id)}
             onUpdated={refresh}
             onToast={onToast}
             verified={verified}

@@ -44,6 +44,7 @@ function mapAchievement(a) {
   return {
     ...a,
     roomId:      a.room_id,
+    roomGameId:  a.room_game_id ?? null,
     pointValue:  a.point_value,
     awardedOnce: a.awarded_once,
     earnedByIds: (a.achievement_awards ?? []).map(x => x.player_id),
@@ -194,9 +195,12 @@ export async function getAchievements(roomId) {
   return (data ?? []).map(mapAchievement)
 }
 
-export async function addAchievement(roomId, { name, description, icon, pointValue, awardedOnce }) {
+export async function addAchievement(roomId, { name, description, icon, pointValue, awardedOnce, roomGameId }) {
   const { data } = await db().from('achievements').insert({
-    room_id: roomId, name, description,
+    room_id:      roomId,
+    room_game_id: roomGameId || null,
+    name,
+    description,
     icon:         icon || '⭐',
     point_value:  Number(pointValue) || 1,
     awarded_once: !!awardedOnce,
@@ -206,11 +210,12 @@ export async function addAchievement(roomId, { name, description, icon, pointVal
 
 export async function updateAchievement(id, updates) {
   await db().from('achievements').update({
-    name:        updates.name,
-    description: updates.description,
-    icon:        updates.icon,
-    point_value: Number(updates.pointValue),
+    name:         updates.name,
+    description:  updates.description,
+    icon:         updates.icon,
+    point_value:  Number(updates.pointValue),
     awarded_once: updates.awardedOnce,
+    room_game_id: updates.roomGameId || null,
   }).eq('id', id)
 }
 

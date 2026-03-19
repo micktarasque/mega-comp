@@ -384,6 +384,7 @@ export default function RoomDetail({ roomId, onBack, onToast }) {
           <RoomSchedule
             room={room}
             roomPlayers={roomPlayers}
+            achievements={achs}
             onToast={onToast}
             verified={verified}
             onNeedCode={() => setShowCodeModal(true)}
@@ -394,6 +395,7 @@ export default function RoomDetail({ roomId, onBack, onToast }) {
           <AchievementManager
             room={room}
             roomPlayers={roomPlayers}
+            roomGames={roomGames}
             onToast={onToast}
             verified={verified}
             onNeedCode={() => setShowCodeModal(true)}

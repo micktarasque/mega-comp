@@ -3,7 +3,18 @@ import { getAchievements, addAchievement, updateAchievement, deleteAchievement, 
 
 const EMOJI_PRESETS = ['⭐','🏆','🔥','💀','👑','🎯','⚡','🎩','🩸','🗣️','💥','🐦','🎖️','🥊','🎲','🧠','💎','🤡','😤','🥇']
 
-function AchievementCard({ ach, players, playerMap, onUpdated, onToast, verified, onNeedCode }) {
+function GameLinkSelect({ value, onChange, roomGames, style }) {
+  return (
+    <select className="select" value={value ?? ''} onChange={e => onChange(e.target.value || null)} style={style}>
+      <option value="">— No game link (general)</option>
+      {roomGames.map(rg => (
+        <option key={rg.id} value={rg.id}>#{rg.order} {rg.name}</option>
+      ))}
+    </select>
+  )
+}
+
+function AchievementCard({ ach, players, playerMap, roomGames, onUpdated, onToast, verified, onNeedCode }) {
   const [awarding, setAwarding]     = useState(false)
   const [selectedPlayer, setSelected] = useState('')
   const [editing, setEditing]       = useState(false)
@@ -12,6 +23,7 @@ function AchievementCard({ ach, players, playerMap, onUpdated, onToast, verified
   const earners  = ach.earnedByIds.map(id => playerMap[id]).filter(Boolean)
   const locked   = ach.awardedOnce && ach.earnedByIds.length > 0
   const eligible = players.filter(p => !ach.earnedByIds.includes(p.id) && (!ach.awardedOnce || !locked))
+  const linkedGame = ach.roomGameId ? roomGames.find(rg => rg.id === ach.roomGameId) : null
 
   async function handleAward(e) {
     e.preventDefault()
@@ -64,6 +76,12 @@ function AchievementCard({ ach, players, playerMap, onUpdated, onToast, verified
             <label className="label">Description</label>
             <textarea className="input" rows={2} value={editData.description} onChange={e => setEditData(d => ({ ...d, description: e.target.value }))} style={{ resize: 'vertical' }} />
           </div>
+          {roomGames.length > 0 && (
+            <div className="field">
+              <label className="label">Linked Game <span style={{ color: 'var(--muted)', fontWeight: 400 }}>(optional)</span></label>
+              <GameLinkSelect value={editData.roomGameId} onChange={v => setEditData(d => ({ ...d, roomGameId: v }))} roomGames={roomGames} />
+            </div>
+          )}
           <div className="field" style={{ flexDirection: 'row', alignItems: 'center', gap: '0.75rem' }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', userSelect: 'none' }}>
               <input type="checkbox" checked={editData.awardedOnce} onChange={e => setEditData(d => ({ ...d, awardedOnce: e.target.checked }))} />
@@ -90,6 +108,9 @@ function AchievementCard({ ach, players, playerMap, onUpdated, onToast, verified
             {ach.awardedOnce
               ? <span className="ach-mode exclusive">Exclusive</span>
               : <span className="ach-mode multi">Multi-award</span>}
+            {linkedGame && (
+              <span className="ach-game-tag">🎮 #{linkedGame.order} {linkedGame.name}</span>
+            )}
           </div>
         </div>
         <div className="ach-actions">
@@ -136,17 +157,18 @@ function AchievementCard({ ach, players, playerMap, onUpdated, onToast, verified
   )
 }
 
-function AddAchievementForm({ roomId, onAdded, onCancel }) {
-  const [name, setName] = useState('')
-  const [desc, setDesc] = useState('')
-  const [icon, setIcon] = useState('⭐')
-  const [pts, setPts]   = useState(2)
-  const [once, setOnce] = useState(true)
+function AddAchievementForm({ roomId, roomGames, onAdded, onCancel }) {
+  const [name, setName]         = useState('')
+  const [desc, setDesc]         = useState('')
+  const [icon, setIcon]         = useState('⭐')
+  const [pts, setPts]           = useState(2)
+  const [once, setOnce]         = useState(true)
+  const [gameId, setGameId]     = useState(null)
 
   async function handleSubmit(e) {
     e.preventDefault()
     if (!name.trim()) return
-    await addAchievement(roomId, { name: name.trim(), description: desc.trim(), icon, pointValue: Number(pts), awardedOnce: once })
+    await addAchievement(roomId, { name: name.trim(), description: desc.trim(), icon, pointValue: Number(pts), awardedOnce: once, roomGameId: gameId })
     onAdded()
   }
 
@@ -176,6 +198,13 @@ function AddAchievementForm({ roomId, onAdded, onCancel }) {
           <textarea className="input" rows={2} placeholder="Describe what earns this achievement…" value={desc} onChange={e => setDesc(e.target.value)} style={{ resize: 'vertical' }} />
         </div>
 
+        {roomGames.length > 0 && (
+          <div className="field">
+            <label className="label">Linked Game <span style={{ color: 'var(--muted)', fontWeight: 400 }}>(optional — leave blank for a general achievement)</span></label>
+            <GameLinkSelect value={gameId} onChange={setGameId} roomGames={roomGames} />
+          </div>
+        )}
+
         <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', userSelect: 'none' }}>
           <input type="checkbox" checked={once} onChange={e => setOnce(e.target.checked)} />
           <div>
@@ -193,7 +222,7 @@ function AddAchievementForm({ roomId, onAdded, onCancel }) {
   )
 }
 
-export default function AchievementManager({ room, roomPlayers, onToast, verified, onNeedCode }) {
+export default function AchievementManager({ room, roomPlayers, roomGames = [], onToast, verified, onNeedCode }) {
   const [achievements, setAchievements] = useState([])
   const [adding, setAdding]             = useState(false)
 
@@ -207,6 +236,18 @@ export default function AchievementManager({ room, roomPlayers, onToast, verifie
 
   const totalPts = achievements.reduce((sum, a) => sum + a.pointValue * a.earnedByIds.length, 0)
   const awarded  = achievements.filter(a => a.earnedByIds.length > 0).length
+
+  // Group: game-linked first (by game order), then general
+  const gameLinked = achievements.filter(a => a.roomGameId)
+  const general    = achievements.filter(a => !a.roomGameId)
+  const sorted     = [
+    ...gameLinked.sort((a, b) => {
+      const ga = roomGames.find(rg => rg.id === a.roomGameId)?.order ?? 999
+      const gb = roomGames.find(rg => rg.id === b.roomGameId)?.order ?? 999
+      return ga - gb
+    }),
+    ...general,
+  ]
 
   return (
     <div>
@@ -223,13 +264,13 @@ export default function AchievementManager({ room, roomPlayers, onToast, verifie
       )}
 
       <div className="achievements-list">
-        {achievements.map(ach => (
-          <AchievementCard key={ach.id} ach={ach} players={roomPlayers} playerMap={playerMap} onUpdated={refresh} onToast={onToast} verified={verified} onNeedCode={onNeedCode} />
+        {sorted.map(ach => (
+          <AchievementCard key={ach.id} ach={ach} players={roomPlayers} playerMap={playerMap} roomGames={roomGames} onUpdated={refresh} onToast={onToast} verified={verified} onNeedCode={onNeedCode} />
         ))}
       </div>
 
       {adding ? (
-        <AddAchievementForm roomId={room.id} onAdded={() => { setAdding(false); refresh() }} onCancel={() => setAdding(false)} />
+        <AddAchievementForm roomId={room.id} roomGames={roomGames} onAdded={() => { setAdding(false); refresh() }} onCancel={() => setAdding(false)} />
       ) : (
         <button className="btn btn-ghost" style={{ marginTop: '1rem' }} onClick={() => verified ? setAdding(true) : onNeedCode()}>
           {verified ? '+ Define Achievement' : '🔒 Define Achievement'}
