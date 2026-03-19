@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { startLoad, endLoad } from '../loading.js'
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -7,8 +8,14 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
   console.error('[mega-comp] Missing Supabase env vars. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.')
 }
 
+// Intercept every Supabase HTTP call to drive the global loading bar
+function trackingFetch(input, init) {
+  startLoad()
+  return fetch(input, init).finally(endLoad)
+}
+
 const _client = (SUPABASE_URL && SUPABASE_KEY)
-  ? createClient(SUPABASE_URL, SUPABASE_KEY)
+  ? createClient(SUPABASE_URL, SUPABASE_KEY, { global: { fetch: trackingFetch } })
   : null
 
 function db() {
@@ -158,6 +165,20 @@ export async function deleteRoomGame(id) {
   await db().from('room_games').delete().eq('id', id)
 }
 
+export async function reorderRoomGame(roomId, id, direction) {
+  const { data } = await db().from('room_games')
+    .select('id, order').eq('room_id', roomId).order('order', { ascending: true })
+  if (!data) return
+  const idx = data.findIndex(g => g.id === id)
+  const swapIdx = direction === 'up' ? idx - 1 : idx + 1
+  if (swapIdx < 0 || swapIdx >= data.length) return
+  const [a, b] = [data[idx], data[swapIdx]]
+  await Promise.all([
+    db().from('room_games').update({ order: b.order }).eq('id', a.id),
+    db().from('room_games').update({ order: a.order }).eq('id', b.id),
+  ])
+}
+
 // ── Games ─────────────────────────────────────────────────────────────────────
 
 export async function getGames() {
@@ -244,14 +265,16 @@ export async function revokeAchievement(achievementId, playerId) {
 // ── Room stats ────────────────────────────────────────────────────────────────
 
 export async function getRoomStats(roomId) {
-  const [{ data: statsData }, { data: achData }, { data: gamesData }] = await Promise.all([
+  const [{ data: statsData }, { data: achData }, { data: gamesData }, { data: rgData }] = await Promise.all([
     db().from('room_player_stats').select('*').eq('room_id', roomId),
     db().from('achievements').select('*, achievement_awards(player_id)').eq('room_id', roomId),
     db().from('game_history').select('*').eq('room_id', roomId),
+    db().from('room_games').select('id, name, order').eq('room_id', roomId).order('order', { ascending: true }),
   ])
 
-  const achs  = (achData ?? []).map(mapAchievement)
-  const games = (gamesData ?? []).map(mapGame)
+  const achs       = (achData ?? []).map(mapAchievement)
+  const games      = (gamesData ?? []).map(mapGame)
+  const roomGames  = rgData ?? []
 
   return (statsData ?? []).map(p => {
     const playerGames = games
@@ -270,6 +293,14 @@ export async function getRoomStats(roomId) {
 
     const earnedAchs = achs.filter(a => a.earnedByIds.includes(p.player_id))
 
+    // Per-game history in schedule order (for heat map)
+    const history = roomGames.map(rg => {
+      const game = games.find(g => g.roomGameId === rg.id)
+      if (!game) return null
+      const pl = game.placements.find(pl => pl.playerId === p.player_id)
+      return pl ? { name: rg.name, place: pl.place } : null
+    }).filter(Boolean)
+
     return {
       id:                p.player_id,
       name:              p.name,
@@ -286,6 +317,7 @@ export async function getRoomStats(roomId) {
       streak,
       favGame,
       earnedAchs,
+      history,
     }
   }).sort((a, b) => b.totalPoints - a.totalPoints || b.competitionPoints - a.competitionPoints)
 }

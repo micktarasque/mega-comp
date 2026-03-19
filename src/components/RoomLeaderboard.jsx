@@ -33,7 +33,61 @@ function Ring({ pct, color, size = 48, stroke = 4 }) {
   )
 }
 
-function PlayerRow({ player, rank, maxTotal, achievements }) {
+// Player-coloured heat map squares: brighter = better placement
+function HistoryHeatMap({ history, color }) {
+  if (!history?.length) return null
+  const opacityFor = place => place === 1 ? 1 : place === 2 ? 0.6 : place === 3 ? 0.32 : 0.08
+  const labels = { 1: '1st', 2: '2nd', 3: '3rd', 0: 'Last' }
+  return (
+    <div className="rs-heatmap">
+      {history.map((h, i) => (
+        <div key={i} className="rs-heatmap-cell"
+          style={{
+            background: color,
+            opacity: opacityFor(h.place),
+            boxShadow: h.place === 1 ? `0 0 5px ${color}` : 'none',
+          }}
+          title={`Game ${i + 1}: ${h.name} — ${labels[h.place]}`}
+        />
+      ))}
+    </div>
+  )
+}
+
+// Stacked placement distribution bar
+function PlacementBar({ history }) {
+  if (!history?.length) return null
+  const counts = { 1: 0, 2: 0, 3: 0, 0: 0 }
+  history.forEach(h => { counts[h.place] = (counts[h.place] || 0) + 1 })
+  const total = history.length
+  const segs = [
+    { place: 1, color: '#FFD700', emoji: '🥇' },
+    { place: 2, color: '#C0C8D8', emoji: '🥈' },
+    { place: 3, color: '#CD7F32', emoji: '🥉' },
+    { place: 0, color: '#333355', emoji: '💀' },
+  ]
+  return (
+    <div className="rs-pd">
+      <div className="rs-pd-bar">
+        {segs.map(s => counts[s.place] > 0 && (
+          <div key={s.place} className="rs-pd-seg"
+            style={{ width: `${(counts[s.place] / total) * 100}%`, background: s.color }}
+            title={`${s.emoji} × ${counts[s.place]}`}
+          />
+        ))}
+      </div>
+      <div className="rs-pd-labels">
+        {segs.filter(s => counts[s.place] > 0).map(s => (
+          <span key={s.place} className="rs-pd-label" style={{ color: s.color }}>
+            {s.emoji}{counts[s.place]}
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function PlayerRow({ player, rank, maxTotal }) {
   const totalPts = useCounter(player.totalPoints)
   const compPts  = useCounter(player.competitionPoints)
   const achPts   = useCounter(player.achievementPoints)
@@ -43,44 +97,50 @@ function PlayerRow({ player, rank, maxTotal, achievements }) {
 
   return (
     <div className={`room-standings-row ${rank === 0 ? 'rank-first' : ''}`}>
-      <div className="rs-rank">{rank < 3 ? medals[rank] : rank + 1}</div>
+      <div className="rs-row-top">
+        <div className="rs-rank">{rank < 3 ? medals[rank] : rank + 1}</div>
 
-      <div className="rs-player">
-        <div className="rs-avatar-wrap">
-          <Ring pct={player.winRate} color={player.color} size={44} stroke={3} />
-          <div className="rs-avatar" style={{ background: player.color + '20', color: player.color }}>
-            {initials(player.name)}
+        <div className="rs-player">
+          <div className="rs-avatar-wrap">
+            <Ring pct={player.winRate} color={player.color} size={44} stroke={3} />
+            <div className="rs-avatar" style={{ background: player.color + '20', color: player.color }}>
+              {initials(player.name)}
+            </div>
+          </div>
+          <div>
+            <div className="rs-name">{player.name}</div>
+            <div className="rs-meta">{player.wins}W · {player.played}GP · {player.winRate}% wr</div>
           </div>
         </div>
-        <div>
-          <div className="rs-name">{player.name}</div>
-          <div className="rs-meta">{player.wins}W · {player.played}GP · {player.winRate}% wr</div>
+
+        <div className="rs-pts-block">
+          <div className="rs-pts-bar-wrap">
+            <div className="rs-pts-bar-track">
+              <div className="rs-pts-seg comp" style={{ width: `${compPct}%`, background: player.color, boxShadow: `0 0 8px ${player.color}66` }} />
+              <div className="rs-pts-seg ach"  style={{ width: `${achPct}%`,  background: '#FFD700', boxShadow: '0 0 8px #FFD70066' }} />
+            </div>
+          </div>
+          <div className="rs-pts-numbers">
+            <span className="rs-pts-comp" style={{ color: player.color }}>{compPts}</span>
+            <span className="rs-pts-sep">+</span>
+            <span className="rs-pts-ach">{achPts}</span>
+            <span className="rs-pts-eq">=</span>
+            <span className="rs-pts-total">{totalPts}</span>
+          </div>
+          <div className="rs-pts-labels">
+            <span>🎮 Comp</span><span>+</span><span>🏅 Ach</span><span>=</span><span>Total</span>
+          </div>
         </div>
       </div>
 
-      {/* Points breakdown bar */}
-      <div className="rs-pts-block">
-        <div className="rs-pts-bar-wrap">
-          <div className="rs-pts-bar-track">
-            <div className="rs-pts-seg comp" style={{ width: `${compPct}%`, background: player.color, boxShadow: `0 0 8px ${player.color}66` }} />
-            <div className="rs-pts-seg ach"  style={{ width: `${achPct}%`,  background: '#FFD700', boxShadow: '0 0 8px #FFD70066' }} />
-          </div>
+      {/* Game history heat map + placement distribution */}
+      {player.history?.length > 0 && (
+        <div className="rs-history-section">
+          <div className="rs-history-label">GAME TRAIL</div>
+          <HistoryHeatMap history={player.history} color={player.color} />
+          <PlacementBar history={player.history} />
         </div>
-        <div className="rs-pts-numbers">
-          <span className="rs-pts-comp" style={{ color: player.color }}>{compPts}</span>
-          <span className="rs-pts-sep">+</span>
-          <span className="rs-pts-ach">{achPts}</span>
-          <span className="rs-pts-eq">=</span>
-          <span className="rs-pts-total">{totalPts}</span>
-        </div>
-        <div className="rs-pts-labels">
-          <span>🎮 Comp</span>
-          <span>+</span>
-          <span>🏅 Ach</span>
-          <span>=</span>
-          <span>Total</span>
-        </div>
-      </div>
+      )}
 
       {/* Earned achievements */}
       {player.earnedAchs?.length > 0 && (
@@ -97,8 +157,8 @@ function PlayerRow({ player, rank, maxTotal, achievements }) {
 }
 
 export default function RoomLeaderboard({ room }) {
-  const [stats, setStats]     = useState([])
-  const [achs, setAchs]       = useState([])
+  const [stats, setStats] = useState([])
+  const [achs, setAchs]   = useState([])
 
   useEffect(() => {
     Promise.all([getRoomStats(room.id), getAchievements(room.id)]).then(([s, a]) => {
@@ -108,14 +168,12 @@ export default function RoomLeaderboard({ room }) {
 
   if (stats.length === 0) return <div className="empty">No results logged yet.</div>
 
-  const maxTotal   = stats[0]?.totalPoints || 1
-  const totalComp  = stats.reduce((s, p) => s + p.competitionPoints, 0)
-  const totalAch   = stats.reduce((s, p) => s + p.achievementPoints, 0)
-  const achMap     = Object.fromEntries(achs.map(a => [a.id, a]))
+  const maxTotal  = stats[0]?.totalPoints || 1
+  const totalComp = stats.reduce((s, p) => s + p.competitionPoints, 0)
+  const totalAch  = stats.reduce((s, p) => s + p.achievementPoints, 0)
 
   return (
     <div>
-      {/* Summary bar */}
       <div className="rs-summary">
         <div className="rs-sum-cell">
           <div className="rs-sum-val">{stats.reduce((s, p) => s + p.played, 0)}</div>
@@ -140,15 +198,16 @@ export default function RoomLeaderboard({ room }) {
       </div>
 
       <div className="rs-legend">
-        <span style={{ color: 'var(--muted)', fontSize: '0.68rem' }}>Bar: </span>
-        <span className="rs-legend-comp">🎮 Competition pts</span>
-        <span style={{ color: 'var(--muted)' }}> + </span>
-        <span className="rs-legend-ach">🏅 Achievement pts</span>
+        <span className="rs-legend-comp">🎮 Comp pts</span>
+        <span style={{ color: 'var(--muted-fg)' }}> + </span>
+        <span className="rs-legend-ach">🏅 Ach pts</span>
+        <span className="rs-legend-sep">·</span>
+        <span style={{ color: 'var(--muted-fg)', fontSize: '0.65rem' }}>Heat map: brighter square = higher finish per game</span>
       </div>
 
       <div className="room-standings-list">
         {stats.map((player, i) => (
-          <PlayerRow key={player.id} player={player} rank={i} maxTotal={maxTotal} achievements={achs} />
+          <PlayerRow key={player.id} player={player} rank={i} maxTotal={maxTotal} />
         ))}
       </div>
     </div>

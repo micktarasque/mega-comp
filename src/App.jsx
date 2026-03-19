@@ -2,11 +2,39 @@ import { useState, useEffect } from 'react'
 import Dashboard from './components/Dashboard'
 import Rooms from './components/Rooms'
 import RoomDetail from './components/RoomDetail'
+import { onLoad } from './loading'
 
 const TABS = [
   { id: 'dashboard', label: 'Dashboard', icon: '📊' },
   { id: 'rooms',     label: 'Rooms',     icon: '🎮' },
 ]
+
+const WIZARD_MSGS = [
+  '🧙 THE WIZARD IS BREWING YOUR DATA...',
+  '🧙 CONSULTING THE ANCIENT SCROLLS...',
+  '🧙 CASTING: RETRIEVE DATA SPELL...',
+  '🧙 THE WIZARD REQUIRES MORE BANDWIDTH...',
+  '🧙 SPEAKING TO THE DATABASE SPIRITS...',
+]
+
+function WizardLoader() {
+  const [msgIdx, setMsgIdx] = useState(0)
+  useEffect(() => {
+    const id = setInterval(() => setMsgIdx(i => (i + 1) % WIZARD_MSGS.length), 2200)
+    return () => clearInterval(id)
+  }, [])
+  return (
+    <div className="wizard-loader">
+      <div className="wizard-track">
+        <span className="wizard-sprite">🧙</span>
+      </div>
+      <div className="wizard-bar-wrap">
+        <div className="wizard-bar" />
+      </div>
+      <div className="wizard-msg">{WIZARD_MSGS[msgIdx]}</div>
+    </div>
+  )
+}
 
 function Toast({ messages }) {
   return (
@@ -22,9 +50,12 @@ function parseHash() {
 }
 
 export default function App() {
-  const [tab, setTab]                   = useState(() => parseHash() ? 'rooms' : 'dashboard')
+  const [tab, setTab]                       = useState(() => parseHash() ? 'rooms' : 'dashboard')
   const [selectedRoomId, setSelectedRoomId] = useState(parseHash)
-  const [toasts, setToasts]             = useState([])
+  const [toasts, setToasts]                 = useState([])
+  const [loading, setLoading]               = useState(false)
+
+  useEffect(() => onLoad(setLoading), [])
 
   useEffect(() => {
     function onHashChange() {
@@ -55,6 +86,8 @@ export default function App() {
 
   return (
     <div className="app">
+      {loading && <WizardLoader />}
+
       <nav className="nav">
         <span className="nav-logo">Party — Mega Comp</span>
         <div className="nav-tabs">

@@ -42,18 +42,26 @@ function RoomCard({ room, onOpen, onDelete, onStatusChange }) {
 }
 
 function CreateRoomForm({ onCreated, onCancel }) {
-  const [name, setName]     = useState('')
-  const [date, setDate]     = useState(new Date().toISOString().split('T')[0])
-  const [desc, setDesc]     = useState('')
-  const [status, setStatus] = useState('upcoming')
+  const [name, setName]             = useState('')
+  const [date, setDate]             = useState(new Date().toISOString().split('T')[0])
+  const [desc, setDesc]             = useState('')
+  const [status, setStatus]         = useState('upcoming')
+  const [submitting, setSubmitting] = useState(false)
 
   async function handleSubmit(e) {
     e.preventDefault()
-    if (!name.trim()) return
-    const room = await addRoom(name.trim(), date, desc.trim(), status)
-    if (room?.id) markRoomVerified(room.id)
-    onCreated(room?.id ?? null)
+    if (!name.trim() || submitting) return
+    setSubmitting(true)
+    try {
+      const room = await addRoom(name.trim(), date, desc.trim(), status)
+      if (room?.id) markRoomVerified(room.id)
+      onCreated(room?.id ?? null)
+    } finally {
+      setSubmitting(false)
+    }
   }
+
+  const canSubmit = name.trim() && !submitting
 
   return (
     <div className="create-room-form card">
@@ -61,17 +69,17 @@ function CreateRoomForm({ onCreated, onCancel }) {
       <form className="form-grid" onSubmit={handleSubmit}>
         <div className="field">
           <label className="label">Room Name</label>
-          <input className="input" placeholder="e.g. Game Night Vol.2" value={name} onChange={e => setName(e.target.value)} required />
+          <input className="input" placeholder="e.g. Game Night Vol.2" value={name} onChange={e => setName(e.target.value)} required disabled={submitting} />
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
           <div className="field">
             <label className="label">Date</label>
-            <input type="date" className="input date-input" value={date} onChange={e => setDate(e.target.value)} />
+            <input type="date" className="input date-input" value={date} onChange={e => setDate(e.target.value)} disabled={submitting} />
           </div>
           <div className="field">
             <label className="label">Status</label>
-            <select className="select" value={status} onChange={e => setStatus(e.target.value)}>
+            <select className="select" value={status} onChange={e => setStatus(e.target.value)} disabled={submitting}>
               <option value="upcoming">Upcoming</option>
               <option value="active">Active</option>
               <option value="completed">Completed</option>
@@ -81,18 +89,18 @@ function CreateRoomForm({ onCreated, onCancel }) {
 
         <div className="field">
           <label className="label">Description</label>
-          <textarea className="input" rows={3} placeholder="Rules, stakes, vibe…" value={desc} onChange={e => setDesc(e.target.value)} style={{ resize: 'vertical' }} />
+          <textarea className="input" rows={3} placeholder="Rules, stakes, vibe…" value={desc} onChange={e => setDesc(e.target.value)} style={{ resize: 'vertical' }} disabled={submitting} />
         </div>
 
-        <div style={{ color: 'var(--muted)', fontSize: '0.8rem' }}>
+        <div style={{ color: 'var(--muted-fg)', fontSize: '0.8rem' }}>
           Players are added inside the room after creation.
         </div>
 
-        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-          <button type="button" className="btn btn-ghost" onClick={onCancel}>Cancel</button>
-          <button type="submit" className="btn btn-primary" disabled={!name.trim()}
-            style={{ opacity: name.trim() ? 1 : 0.4 }}>
-            Create Room
+        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', alignItems: 'center' }}>
+          {submitting && <span style={{ fontSize: '0.78rem', color: 'var(--arc-cyan)', fontFamily: "'Courier New', monospace", letterSpacing: '0.1em' }}>🧙 SUMMONING ROOM...</span>}
+          <button type="button" className="btn btn-ghost" onClick={onCancel} disabled={submitting}>Cancel</button>
+          <button type="submit" className="btn btn-primary" disabled={!canSubmit} style={{ opacity: canSubmit ? 1 : 0.4 }}>
+            {submitting ? '⏳ Creating…' : 'Create Room'}
           </button>
         </div>
       </form>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getRoomGames, addRoomGame, updateRoomGame, deleteRoomGame, getGames, addGame, POINTS, PLACE_EMOJI, PLACE_LABEL } from '../db/supabaseDb'
+import { getRoomGames, addRoomGame, updateRoomGame, deleteRoomGame, getGames, addGame, reorderRoomGame, POINTS, PLACE_EMOJI, PLACE_LABEL } from '../db/supabaseDb'
 
 const PLACES = [1, 2, 3, 0]
 
@@ -11,7 +11,6 @@ function PointsBadge({ pointsMode, customPoints }) {
   return <span className="pts-mode-badge custom">✦ {cp[1]}·{cp[2]}·{cp[3]}·{cp[0]}</span>
 }
 
-// Inline log-result form for a specific room game slot
 function LogResultInline({ room, roomGame, players, onDone, onToast }) {
   const ptMap = (roomGame.pointsMode === 'custom' && roomGame.customPoints) ? roomGame.customPoints : POINTS
   const [participantIds, setParticipantIds] = useState(players.map(p => p.id))
@@ -119,13 +118,16 @@ function LogResultInline({ room, roomGame, players, onDone, onToast }) {
   )
 }
 
-// Single scheduled game card
-function RoomGameCard({ roomGame, room, players, allGames, linkedAchs, onUpdated, onToast, verified, onNeedCode }) {
+function RoomGameCard({ roomGame, room, players, allGames, linkedAchs, isFirst, isLast, onUpdated, onReorder, onToast, verified, onNeedCode }) {
+  const results = allGames.filter(g => g.roomGameId === roomGame.id)
+  const isDone  = results.length > 0
+
+  // Pending games open by default, done ones collapsed
+  const [open, setOpen]     = useState(!isDone)
   const [logging, setLogging]   = useState(false)
   const [editing, setEditing]   = useState(false)
   const [editData, setEditData] = useState({ ...roomGame })
 
-  const results   = allGames.filter(g => g.roomGameId === roomGame.id)
   const ptMap     = (roomGame.pointsMode === 'custom' && roomGame.customPoints) ? roomGame.customPoints : POINTS
   const playerMap = Object.fromEntries(players.map(p => [p.id, p]))
 
@@ -149,7 +151,7 @@ function RoomGameCard({ roomGame, room, players, allGames, linkedAchs, onUpdated
 
   if (editing) {
     return (
-      <div className="schedule-game-card editing">
+      <div className="sgc-card editing">
         <form onSubmit={handleSaveEdit} className="form-grid">
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
             <div className="field">
@@ -191,88 +193,115 @@ function RoomGameCard({ roomGame, room, players, allGames, linkedAchs, onUpdated
   }
 
   return (
-    <div className="schedule-game-card">
-      <div className="sgc-header">
+    <div className={`sgc-card ${isDone ? 'done' : 'pending'} ${open ? 'open' : ''}`}>
+      {/* ── Always-visible accordion header ── */}
+      <div className="sgc-header" onClick={() => setOpen(o => !o)}>
+        <div className="sgc-reorder" onClick={e => e.stopPropagation()}>
+          <button className="reorder-btn" disabled={isFirst} onClick={() => onReorder(roomGame.id, 'up')} title="Move up">▲</button>
+          <button className="reorder-btn" disabled={isLast}  onClick={() => onReorder(roomGame.id, 'down')} title="Move down">▼</button>
+        </div>
+
         <span className="sgc-order">#{roomGame.order}</span>
+
         <div className="sgc-title-block">
           <div className="sgc-name">{roomGame.name}</div>
-          <PointsBadge pointsMode={roomGame.pointsMode} customPoints={roomGame.customPoints} />
+          <div className="sgc-header-meta">
+            <PointsBadge pointsMode={roomGame.pointsMode} customPoints={roomGame.customPoints} />
+            {linkedAchs.length > 0 && (
+              <span className="sgc-ach-count">🏅 {linkedAchs.length} ach</span>
+            )}
+          </div>
         </div>
-        <div className="sgc-actions">
-          <button className="icon-btn" onClick={() => verified ? setEditing(true) : onNeedCode()} title="Edit">✎</button>
-          <button className="icon-btn danger" onClick={() => verified ? handleDelete() : onNeedCode()} title="Remove">✕</button>
+
+        <div className="sgc-header-right" onClick={e => e.stopPropagation()}>
+          <span className={`sgc-status-pill ${isDone ? 'done' : 'pending'}`}>
+            {isDone ? '✓ Done' : '○ Pending'}
+          </span>
+          {verified && (
+            <>
+              <button className="icon-btn" onClick={() => setEditing(true)} title="Edit">✎</button>
+              <button className="icon-btn danger" onClick={handleDelete} title="Remove">✕</button>
+            </>
+          )}
+          {!verified && (
+            <button className="icon-btn" onClick={onNeedCode} title="Unlock to edit">🔒</button>
+          )}
+          <button className="sgc-toggle" onClick={() => setOpen(o => !o)}>{open ? '▲' : '▼'}</button>
         </div>
       </div>
 
-      {roomGame.description && (
-        <div className="sgc-desc">{roomGame.description}</div>
-      )}
+      {/* ── Expandable body ── */}
+      <div className={`sgc-body ${open ? 'open' : ''}`}>
+        <div className="sgc-body-inner">
+          {roomGame.description && (
+            <div className="sgc-desc">{roomGame.description}</div>
+          )}
 
-      {/* Achievements available for this game */}
-      {linkedAchs && linkedAchs.length > 0 && (
-        <div className="sgc-achs">
-          <div className="sgc-achs-label">Achievements up for grabs</div>
-          <div className="sgc-achs-list">
-            {linkedAchs.map(a => {
-              const claimed = a.earnedByIds.length > 0
-              return (
-                <div key={a.id} className={`sgc-ach-pill ${claimed ? 'claimed' : ''}`}>
-                  <span>{a.icon}</span>
-                  <span className="sgc-ach-name">{a.name}</span>
-                  <span className="sgc-ach-pts">+{a.pointValue}</span>
-                  {claimed && <span className="sgc-ach-claimed">✓</span>}
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
+          {roomGame.pointsMode === 'custom' && roomGame.customPoints && (
+            <div className="custom-pts-pills">
+              {PLACES.map(p => (
+                <span key={p} className="custom-pts-pill">
+                  {PLACE_EMOJI[p]} <strong>{roomGame.customPoints[p]}</strong>pts
+                </span>
+              ))}
+            </div>
+          )}
 
-      {roomGame.pointsMode === 'custom' && roomGame.customPoints && (
-        <div className="custom-pts-pills">
-          {PLACES.map(p => (
-            <span key={p} className="custom-pts-pill">
-              {PLACE_EMOJI[p]} <strong>{roomGame.customPoints[p]}</strong>pts
-            </span>
-          ))}
-        </div>
-      )}
-
-      {/* Logged results for this slot */}
-      {results.length > 0 && (
-        <div className="sgc-results">
-          {results.map(game => {
-            const sorted = [...game.placements].sort((a, b) => {
-              if (a.place === 0 && b.place !== 0) return 1
-              if (b.place === 0 && a.place !== 0) return -1
-              return a.place - b.place
-            })
-            return (
-              <div key={game.id} className="sgc-result-row">
-                <span className="sgc-result-date">{new Date(game.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-                <div className="sgc-result-placements">
-                  {sorted.map(({ playerId, playerName, playerColor, place, points }) => {
-                    return (
-                      <span key={playerId} className="placement-pill" style={{ color: playerColor, borderColor: playerColor + '50' }}>
-                        {PLACE_EMOJI[place]} {playerName}
-                        <span style={{ color: 'var(--muted)', fontWeight: 500 }}> +{points}</span>
-                      </span>
-                    )
-                  })}
-                </div>
+          {/* Linked achievements */}
+          {linkedAchs.length > 0 && (
+            <div className="sgc-achs">
+              <div className="sgc-achs-label">Achievements up for grabs</div>
+              <div className="sgc-achs-list">
+                {linkedAchs.map(a => {
+                  const claimed = a.earnedByIds.length > 0
+                  return (
+                    <div key={a.id} className={`sgc-ach-pill ${claimed ? 'claimed' : ''}`}>
+                      <span>{a.icon}</span>
+                      <span className="sgc-ach-name">{a.name}</span>
+                      <span className="sgc-ach-pts">+{a.pointValue}</span>
+                      {claimed && <span className="sgc-ach-claimed">✓ Claimed</span>}
+                    </div>
+                  )
+                })}
               </div>
-            )
-          })}
-        </div>
-      )}
+            </div>
+          )}
 
-      {!logging ? (
-        <button className="btn btn-ghost btn-sm sgc-log-btn" onClick={() => verified ? setLogging(true) : onNeedCode()}>
-          {verified ? '+ Log Result' : '🔒 Log Result'}
-        </button>
-      ) : (
-        <LogResultInline room={room} roomGame={roomGame} players={players} onDone={() => { setLogging(false); onUpdated() }} onToast={onToast} />
-      )}
+          {/* Logged results */}
+          {results.length > 0 && (
+            <div className="sgc-results">
+              {results.map(game => {
+                const sorted = [...game.placements].sort((a, b) => {
+                  if (a.place === 0 && b.place !== 0) return 1
+                  if (b.place === 0 && a.place !== 0) return -1
+                  return a.place - b.place
+                })
+                return (
+                  <div key={game.id} className="sgc-result-row">
+                    <span className="sgc-result-date">{new Date(game.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                    <div className="sgc-result-placements">
+                      {sorted.map(({ playerId, playerName, playerColor, place, points }) => (
+                        <span key={playerId} className="placement-pill" style={{ color: playerColor, borderColor: playerColor + '50' }}>
+                          {PLACE_EMOJI[place]} {playerName}
+                          <span style={{ color: 'var(--muted-fg)', fontWeight: 500 }}> +{points}</span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {!logging ? (
+            <button className="btn btn-ghost btn-sm sgc-log-btn" onClick={() => verified ? setLogging(true) : onNeedCode()}>
+              {verified ? '+ Log Result' : '🔒 Log Result'}
+            </button>
+          ) : (
+            <LogResultInline room={room} roomGame={roomGame} players={players} onDone={() => { setLogging(false); onUpdated() }} onToast={onToast} />
+          )}
+        </div>
+      </div>
     </div>
   )
 }
@@ -335,8 +364,8 @@ function AddGameSlotForm({ roomId, currentCount, onAdded, onCancel }) {
 }
 
 export default function RoomSchedule({ room, roomPlayers, achievements = [], onToast, verified, onNeedCode }) {
-  const [roomGames, setRoomGames] = useState([])
-  const [allGames, setAllGames]   = useState([])
+  const [roomGames, setRoomGames]   = useState([])
+  const [allGames, setAllGames]     = useState([])
   const [addingSlot, setAddingSlot] = useState(false)
 
   async function refresh() {
@@ -346,6 +375,11 @@ export default function RoomSchedule({ room, roomPlayers, achievements = [], onT
   }
 
   useEffect(() => { refresh() }, [room.id])
+
+  async function handleReorder(id, direction) {
+    await reorderRoomGame(room.id, id, direction)
+    refresh()
+  }
 
   const completedCount = roomGames.filter(rg => allGames.some(g => g.roomGameId === rg.id)).length
 
@@ -372,7 +406,7 @@ export default function RoomSchedule({ room, roomPlayers, achievements = [], onT
       )}
 
       <div className="schedule-list">
-        {roomGames.map(rg => (
+        {roomGames.map((rg, idx) => (
           <RoomGameCard
             key={rg.id}
             roomGame={rg}
@@ -380,7 +414,10 @@ export default function RoomSchedule({ room, roomPlayers, achievements = [], onT
             players={roomPlayers}
             allGames={allGames}
             linkedAchs={achievements.filter(a => a.roomGameId === rg.id)}
+            isFirst={idx === 0}
+            isLast={idx === roomGames.length - 1}
             onUpdated={refresh}
+            onReorder={handleReorder}
             onToast={onToast}
             verified={verified}
             onNeedCode={onNeedCode}
