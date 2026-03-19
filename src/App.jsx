@@ -120,6 +120,7 @@ export default function App() {
           key={selectedRoomId}
           roomId={selectedRoomId}
           onBack={() => openRoom(null)}
+          onDashboard={() => handleTabChange('dashboard')}
           onToast={toast}
         />
       )}

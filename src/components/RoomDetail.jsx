@@ -237,7 +237,7 @@ function RoomOverview({ room, roomPlayers, games, roomGames, achievements, onEdi
   )
 }
 
-export default function RoomDetail({ roomId, onBack, onToast }) {
+export default function RoomDetail({ roomId, onBack, onDashboard, onToast }) {
   const [room, setRoom]               = useState(null)
   const [roomPlayers, setRoomPlayers] = useState([])
   const [games, setGames]             = useState([])
@@ -322,7 +322,14 @@ export default function RoomDetail({ roomId, onBack, onToast }) {
 
       {/* Back + header */}
       <div className="room-detail-topbar">
-        <button className="btn btn-ghost btn-sm back-btn" onClick={onBack}>← Rooms</button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <button className="btn btn-ghost btn-sm back-btn" onClick={onBack}>← Rooms</button>
+          {onDashboard && (
+            <button className="btn btn-ghost btn-sm" onClick={onDashboard} style={{ fontSize: '0.78rem' }} title="View metrics on Dashboard">
+              📊 Dashboard
+            </button>
+          )}
+        </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <button className="btn btn-ghost btn-sm" onClick={handleCopyLink} style={{ fontSize: '0.72rem' }}>
             {copiedLink ? '✓ Copied!' : '🔗 Share'}
