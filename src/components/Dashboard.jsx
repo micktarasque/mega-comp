@@ -967,10 +967,12 @@ function RoomSelector({ rooms, selectedId, onSelect, onEdit }) {
 
 // ── Neural Connection Map (Games × Achievements) ──────────────────────────────
 function NeuralConnectionMap({ roomGames, games, achievements, stats }) {
-  const containerRef = useRef(null)
-  const gameNodeRefs = useRef({})
-  const achNodeRefs  = useRef({})
-  const [lines, setLines] = useState([])
+  const containerRef   = useRef(null)
+  const gameNodeRefs   = useRef({})
+  const achNodeRefs    = useRef({})
+  const playerNodeRefs = useRef({})
+  const [gameLines,   setGameLines]   = useState([])
+  const [playerLines, setPlayerLines] = useState([])
 
   const playerMap  = Object.fromEntries(stats.map(p => [p.id, p]))
   const doneIds    = new Set(games.map(g => g.roomGameId).filter(Boolean))
@@ -981,7 +983,17 @@ function NeuralConnectionMap({ roomGames, games, achievements, stats }) {
   const claimed    = achievements.filter(a => a.earnedByIds.length > 0).length
   const totalPts   = achievements.reduce((s, a) => s + a.pointValue, 0)
 
-  // Build ordered achievement list: linked ones in game order, then free ones
+  // Players who have earned at least one achievement, sorted by ach pts desc
+  const achPlayers = useMemo(() =>
+    stats
+      .map(p => {
+        const earnedAchs = achievements.filter(a => a.earnedByIds.includes(p.id))
+        return { ...p, earnedAchs, achPts: earnedAchs.reduce((s, a) => s + a.pointValue, 0) }
+      })
+      .filter(p => p.earnedAchs.length > 0)
+      .sort((a, b) => b.achPts - a.achPts),
+  [stats, achievements])
+
   const orderedAchs = [
     ...roomGames.flatMap(rg => linkedAchs.filter(a => a.roomGameId === rg.id)),
     ...freeAchs,
@@ -992,7 +1004,9 @@ function NeuralConnectionMap({ roomGames, games, achievements, stats }) {
       const container = containerRef.current
       if (!container) return
       const cr = container.getBoundingClientRect()
-      const newLines = []
+
+      // Game → Achievement lines
+      const newGameLines = []
       achievements.forEach(ach => {
         if (!ach.roomGameId) return
         const gEl = gameNodeRefs.current[ach.roomGameId]
@@ -1000,71 +1014,195 @@ function NeuralConnectionMap({ roomGames, games, achievements, stats }) {
         if (!gEl || !aEl) return
         const gr = gEl.getBoundingClientRect()
         const ar = aEl.getBoundingClientRect()
-        newLines.push({
+        newGameLines.push({
           id:      ach.id,
-          x1:      gr.right  - cr.left,
-          y1:      gr.top    + gr.height / 2 - cr.top,
-          x2:      ar.left   - cr.left,
-          y2:      ar.top    + ar.height / 2 - cr.top,
+          x1:      gr.right - cr.left,
+          y1:      gr.top   + gr.height / 2 - cr.top,
+          x2:      ar.left  - cr.left,
+          y2:      ar.top   + ar.height / 2 - cr.top,
           claimed: ach.earnedByIds.length > 0,
+          pts:     ach.pointValue,
         })
       })
-      setLines(newLines)
+      setGameLines(newGameLines)
+
+      // Achievement → Player lines (only claimed)
+      const newPlayerLines = []
+      achievements.forEach(ach => {
+        if (!ach.earnedByIds.length) return
+        const aEl = achNodeRefs.current[ach.id]
+        if (!aEl) return
+        const ar = aEl.getBoundingClientRect()
+        ach.earnedByIds.forEach(pid => {
+          const pEl = playerNodeRefs.current[pid]
+          if (!pEl) return
+          const pr = pEl.getBoundingClientRect()
+          newPlayerLines.push({
+            id:    `${ach.id}__${pid}`,
+            achId: ach.id,
+            pid,
+            color: playerMap[pid]?.color || '#FFD700',
+            pts:   ach.pointValue,
+            x1:    ar.right - cr.left,
+            y1:    ar.top   + ar.height / 2 - cr.top,
+            x2:    pr.left  - cr.left,
+            y2:    pr.top   + pr.height / 2 - cr.top,
+          })
+        })
+      })
+      setPlayerLines(newPlayerLines)
     }
     measure()
     window.addEventListener('resize', measure)
     return () => window.removeEventListener('resize', measure)
   }, [roomGames, achievements, games, stats])
 
-  const hasAny = roomGames.length > 0 || achievements.length > 0
+  const totalLinks = gameLines.length + playerLines.length
+  const maxPts = Math.max(1, ...achievements.map(a => Math.max(1, a.pointValue)))
 
   return (
     <div className="neural-map" ref={containerRef}>
-      {/* SVG connection layer — covers full container */}
+      {/* HUD corner brackets */}
+      <div className="neural-corner tl" /><div className="neural-corner tr" />
+      <div className="neural-corner bl" /><div className="neural-corner br" />
+
+      {/* SVG connection layer */}
       <svg className="neural-svg">
         <defs>
-          <filter id="neon-glow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="2.5" result="blur" />
+          <filter id="bloom-strong" x="-60%" y="-60%" width="220%" height="220%">
+            <feGaussianBlur stdDeviation="4" result="blur1" />
+            <feGaussianBlur stdDeviation="8" result="blur2" in="SourceGraphic" />
+            <feMerge>
+              <feMergeNode in="blur2" />
+              <feMergeNode in="blur1" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+          <filter id="bloom-soft" x="-40%" y="-40%" width="180%" height="180%">
+            <feGaussianBlur stdDeviation="2" result="blur" />
             <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
           </filter>
+          <radialGradient id="particle-cyan" cx="50%" cy="50%" r="50%">
+            <stop offset="0%"   stopColor="#00E5FF" stopOpacity="1" />
+            <stop offset="100%" stopColor="#00E5FF" stopOpacity="0" />
+          </radialGradient>
+          <radialGradient id="particle-gold" cx="50%" cy="50%" r="50%">
+            <stop offset="0%"   stopColor="#FFD700" stopOpacity="1" />
+            <stop offset="100%" stopColor="#FFD700" stopOpacity="0" />
+          </radialGradient>
+          {/* Per-player particle gradients */}
+          {achPlayers.map(p => (
+            <radialGradient key={p.id} id={`pp-${p.id.replace(/-/g,'')}`} cx="50%" cy="50%" r="50%">
+              <stop offset="0%"   stopColor={p.color} stopOpacity="1" />
+              <stop offset="100%" stopColor={p.color} stopOpacity="0" />
+            </radialGradient>
+          ))}
         </defs>
-        {lines.map(l => {
-          const mx = (l.x1 + l.x2) / 2
-          const path = `M ${l.x1} ${l.y1} C ${mx} ${l.y1}, ${mx} ${l.y2}, ${l.x2} ${l.y2}`
-          const color = l.claimed ? '#FFD700' : 'var(--arc-cyan)'
+
+        {/* ── Game → Achievement ── */}
+        {gameLines.map((l, idx) => {
+          const w        = Math.min(1, Math.max(0, l.pts) / maxPts)  // 0–1 weight
+          const mx       = (l.x1 + l.x2) / 2
+          const pathD    = `M ${l.x1} ${l.y1} C ${mx} ${l.y1}, ${mx} ${l.y2}, ${l.x2} ${l.y2}`
+          const pathId   = `np-${l.id.replace(/-/g,'')}`
+          const color    = l.claimed ? '#FFD700' : '#00E5FF'
+          const sw       = l.claimed ? 1.5 + w * 2 : 1 + w * 1.5
+          const durNum   = l.claimed ? 1.1 - w * 0.4 : 2.2 - w * 1.2
+          const dur      = `${durNum.toFixed(2)}s`
+          const pr       = 3 + w * 3   // particle glow radius
+          const d0       = (idx * 0.31) % 1.5
+          const delay    = `${d0}s`
+          const trailDel = `${d0 - durNum * 0.45}s`
           return (
             <g key={l.id}>
-              {/* Glow halo */}
-              <path d={path} fill="none" stroke={color} strokeWidth="5" opacity={l.claimed ? 0.12 : 0.08} filter="url(#neon-glow)" />
-              {/* Animated data-flow line */}
-              <path d={path} fill="none" stroke={color} strokeWidth={l.claimed ? 1.5 : 1}
-                opacity={l.claimed ? 0.9 : 0.55}
-                strokeDasharray="7 4"
-                className={l.claimed ? 'neural-line claimed' : 'neural-line'}
-              />
-              {/* End-node dot */}
-              <circle cx={l.x2} cy={l.y2} r="3.5" fill={color} opacity={l.claimed ? 1 : 0.7}
-                filter={l.claimed ? 'url(#neon-glow)' : undefined} />
+              <path d={pathD} fill="none" stroke={color} strokeWidth={8 + w * 6}
+                opacity={l.claimed ? 0.06 + w * 0.08 : 0.04 + w * 0.06} filter="url(#bloom-strong)" />
+              <path d={pathD} fill="none" stroke={color} strokeWidth={3 + w * 2}
+                opacity={l.claimed ? 0.15 + w * 0.15 : 0.08 + w * 0.1} filter="url(#bloom-soft)" />
+              <path id={pathId} d={pathD} fill="none" stroke={color}
+                strokeWidth={sw} opacity={l.claimed ? 0.85 + w * 0.1 : 0.4 + w * 0.3}
+                strokeDasharray="8 5"
+                className={l.claimed ? 'neural-line claimed' : 'neural-line'} />
+              <circle r={pr} fill={`url(#particle-${l.claimed ? 'gold' : 'cyan'})`} filter="url(#bloom-soft)">
+                <animateMotion dur={dur} repeatCount="indefinite" begin={delay}><mpath href={`#${pathId}`} /></animateMotion>
+              </circle>
+              <circle r={1.5 + w * 1.5} fill={color} opacity="0.95">
+                <animateMotion dur={dur} repeatCount="indefinite" begin={delay}><mpath href={`#${pathId}`} /></animateMotion>
+              </circle>
+              <circle r={pr * 0.65} fill={`url(#particle-${l.claimed ? 'gold' : 'cyan'})`} opacity="0.7">
+                <animateMotion dur={dur} repeatCount="indefinite" begin={trailDel}><mpath href={`#${pathId}`} /></animateMotion>
+              </circle>
+              <circle cx={l.x1} cy={l.y1} r={2 + w * 2} fill={color} opacity="0.7" filter="url(#bloom-soft)" />
+              <circle cx={l.x2} cy={l.y2} r={3 + w * 3} fill={color} opacity={l.claimed ? 1 : 0.65} filter="url(#bloom-strong)" />
+            </g>
+          )
+        })}
+
+        {/* ── Achievement → Player ── */}
+        {playerLines.map((l, idx) => {
+          const w        = Math.min(1, Math.max(0, l.pts) / maxPts)
+          const mx       = (l.x1 + l.x2) / 2
+          const pathD    = `M ${l.x1} ${l.y1} C ${mx} ${l.y1}, ${mx} ${l.y2}, ${l.x2} ${l.y2}`
+          const pathId   = `pp-path-${l.id.replace(/[-_]/g,'')}`
+          const gradId   = `url(#pp-${l.pid.replace(/-/g,'')})`
+          const sw       = 1.5 + w * 2.5
+          const durNum   = 1.3 - w * 0.6
+          const dur      = `${durNum.toFixed(2)}s`
+          const pr       = 3 + w * 4
+          const d0       = (idx * 0.28) % 1.4
+          const delay    = `${d0}s`
+          const trailDel = `${d0 - durNum * 0.45}s`
+          return (
+            <g key={l.id}>
+              <path d={pathD} fill="none" stroke={l.color} strokeWidth={8 + w * 8}
+                opacity={0.05 + w * 0.1} filter="url(#bloom-strong)" />
+              <path d={pathD} fill="none" stroke={l.color} strokeWidth={3 + w * 2}
+                opacity={0.12 + w * 0.18} filter="url(#bloom-soft)" />
+              <path id={pathId} d={pathD} fill="none" stroke={l.color}
+                strokeWidth={sw} opacity={0.85 + w * 0.12} strokeDasharray="6 4"
+                className="neural-line claimed" />
+              <circle r={pr} fill={gradId} filter="url(#bloom-soft)">
+                <animateMotion dur={dur} repeatCount="indefinite" begin={delay}><mpath href={`#${pathId}`} /></animateMotion>
+              </circle>
+              <circle r={1.5 + w * 2} fill={l.color} opacity="0.95">
+                <animateMotion dur={dur} repeatCount="indefinite" begin={delay}><mpath href={`#${pathId}`} /></animateMotion>
+              </circle>
+              <circle r={pr * 0.6} fill={gradId} opacity="0.65">
+                <animateMotion dur={dur} repeatCount="indefinite" begin={trailDel}><mpath href={`#${pathId}`} /></animateMotion>
+              </circle>
+              <circle cx={l.x1} cy={l.y1} r={2 + w * 2} fill={l.color} opacity="0.8" filter="url(#bloom-soft)" />
+              <circle cx={l.x2} cy={l.y2} r={4 + w * 3} fill={l.color} opacity="1" filter="url(#bloom-strong)" />
             </g>
           )
         })}
       </svg>
 
-      {/* Header spanning full width */}
+      {/* Full-width header */}
       <div className="neural-header">
-        <span className="neural-header-label">◈ GAME SCHEDULE</span>
-        <span className="neural-header-center">NEURAL LINK MATRIX</span>
-        <span className="neural-header-label" style={{ textAlign: 'right' }}>ACHIEVEMENTS ◈</span>
+        <div className="neural-header-left">
+          <span className="neural-header-label">◈ GAME SCHEDULE</span>
+          <span className="neural-stat-pill">{doneCount}/{roomGames.length} COMPLETE</span>
+        </div>
+        <div className="neural-header-mid">
+          <span className="neural-title-main">SYNAPTIC LINK MATRIX</span>
+          {totalLinks > 0 && (
+            <span className="neural-title-sub">{totalLinks} LINK{totalLinks !== 1 ? 'S' : ''} ACTIVE</span>
+          )}
+        </div>
+        <div className="neural-header-right">
+          <span className="neural-stat-pill gold">{claimed}/{achievements.length} CLAIMED</span>
+          <span className="neural-header-label" style={{ textAlign: 'right' }}>PLAYERS ◈</span>
+        </div>
       </div>
 
-      {/* Left column — games */}
+      {/* Col 1 — games */}
       <div className="neural-col neural-col-games">
         {roomGames.length === 0 ? (
           <div className="neural-empty">NO EVENTS QUEUED</div>
         ) : (
           <>
             {roomGames.map(rg => {
-              const done = doneIds.has(rg.id)
+              const done   = doneIds.has(rg.id)
               const linked = linkedAchs.filter(a => a.roomGameId === rg.id).length
               return (
                 <div key={rg.id} ref={el => gameNodeRefs.current[rg.id] = el}
@@ -1073,7 +1211,7 @@ function NeuralConnectionMap({ roomGames, games, achievements, stats }) {
                   <span className="nn-name">{rg.name}</span>
                   {linked > 0 && <span className="nn-link-count">⚡{linked}</span>}
                   <span className={`nn-status ${done ? 'done' : ''}`}>{done ? '✓' : '○'}</span>
-                  <div className="nn-connector right" />
+                  <div className={`nn-connector right ${linked > 0 ? 'active' : ''}`} />
                 </div>
               )
             })}
@@ -1086,13 +1224,13 @@ function NeuralConnectionMap({ roomGames, games, achievements, stats }) {
         )}
       </div>
 
-      {/* Centre gap — SVG draws through here */}
+      {/* Gap 1 */}
       <div className="neural-gap" />
 
-      {/* Right column — achievements */}
+      {/* Col 2 — achievements */}
       <div className="neural-col neural-col-achs">
         {achievements.length === 0 ? (
-          <div className="neural-empty" style={{ textAlign: 'right' }}>NO ACHIEVEMENTS SET</div>
+          <div className="neural-empty">NO ACHIEVEMENTS SET</div>
         ) : (
           <>
             {orderedAchs.map(a => {
@@ -1101,8 +1239,8 @@ function NeuralConnectionMap({ roomGames, games, achievements, stats }) {
               return (
                 <div key={a.id} ref={el => achNodeRefs.current[a.id] = el}
                   className={`neural-node ach-node ${earner ? 'claimed' : ''} ${isFree ? 'free' : ''}`}
-                  style={earner ? { borderColor: earner.color + '55', background: earner.color + '08' } : undefined}>
-                  {!isFree && <div className="nn-connector left" />}
+                  style={earner ? { '--earner-color': earner.color } : undefined}>
+                  {!isFree && <div className={`nn-connector left ${earner ? 'claimed' : 'active'}`} />}
                   <span className="nn-icon">{a.icon}</span>
                   <div className="nn-ach-text">
                     <div className="nn-name">{a.name}</div>
@@ -1113,6 +1251,7 @@ function NeuralConnectionMap({ roomGames, games, achievements, stats }) {
                   <span className="nn-pts" style={a.pointValue < 0 ? { color: '#FF6B8A' } : undefined}>
                     {a.pointValue > 0 ? '+' : ''}{a.pointValue}
                   </span>
+                  {earner && <div className="nn-connector right claimed" />}
                 </div>
               )
             })}
@@ -1124,6 +1263,32 @@ function NeuralConnectionMap({ roomGames, games, achievements, stats }) {
               <span className="neural-pts-total">{totalPts} pts</span>
             </div>
           </>
+        )}
+      </div>
+
+      {/* Gap 2 */}
+      <div className="neural-gap neural-gap-2" />
+
+      {/* Col 3 — players */}
+      <div className="neural-col neural-col-players">
+        {achPlayers.length === 0 ? (
+          <div className="neural-empty" style={{ fontSize: '0.6rem' }}>NO ACHIEVEMENTS<br />EARNED YET</div>
+        ) : (
+          achPlayers.map(p => (
+            <div key={p.id} ref={el => playerNodeRefs.current[p.id] = el}
+              className="neural-node player-node">
+              <div className="nn-connector left" style={{ borderColor: p.color, boxShadow: `0 0 6px ${p.color}bb` }} />
+              <div className="nn-player-avatar" style={{ background: p.color + '22', color: p.color, borderColor: p.color + '55' }}>
+                {initials(p.name)}
+              </div>
+              <div className="nn-ach-text">
+                <div className="nn-name">{p.name}</div>
+                <div className="nn-earner" style={{ color: p.color }}>
+                  {p.earnedAchs.length} ach · +{p.achPts}pts
+                </div>
+              </div>
+            </div>
+          ))
         )}
       </div>
     </div>
