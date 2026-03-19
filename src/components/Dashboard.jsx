@@ -1102,8 +1102,8 @@ function NeuralConnectionMap({ roomGames, games, achievements, stats }) {
         {/* ── Game → Achievement ── */}
         {gameLines.map((l, idx) => {
           const w        = Math.min(1, Math.max(0, l.pts) / maxPts)  // 0–1 weight
-          const mx       = (l.x1 + l.x2) / 2
-          const pathD    = `M ${l.x1} ${l.y1} C ${mx} ${l.y1}, ${mx} ${l.y2}, ${l.x2} ${l.y2}`
+          const cpx      = Math.max(90, Math.abs(l.y2 - l.y1) * 0.65)
+          const pathD    = `M ${l.x1} ${l.y1} C ${l.x1 + cpx} ${l.y1}, ${l.x2 - cpx} ${l.y2}, ${l.x2} ${l.y2}`
           const pathId   = `np-${l.id.replace(/-/g,'')}`
           const color    = l.claimed ? '#FFD700' : '#00E5FF'
           const sw       = l.claimed ? 1.5 + w * 2 : 1 + w * 1.5
@@ -1141,8 +1141,8 @@ function NeuralConnectionMap({ roomGames, games, achievements, stats }) {
         {/* ── Achievement → Player ── */}
         {playerLines.map((l, idx) => {
           const w        = Math.min(1, Math.max(0, l.pts) / maxPts)
-          const mx       = (l.x1 + l.x2) / 2
-          const pathD    = `M ${l.x1} ${l.y1} C ${mx} ${l.y1}, ${mx} ${l.y2}, ${l.x2} ${l.y2}`
+          const cpx      = Math.max(90, Math.abs(l.y2 - l.y1) * 0.65)
+          const pathD    = `M ${l.x1} ${l.y1} C ${l.x1 + cpx} ${l.y1}, ${l.x2 - cpx} ${l.y2}, ${l.x2} ${l.y2}`
           const pathId   = `pp-path-${l.id.replace(/[-_]/g,'')}`
           const gradId   = `url(#pp-${l.pid.replace(/-/g,'')})`
           const sw       = 1.5 + w * 2.5

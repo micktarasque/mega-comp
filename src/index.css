@@ -754,7 +754,7 @@ body {
 .neural-map {
   position: relative;
   display: grid;
-  grid-template-columns: 1fr 56px 1fr 56px 1fr;
+  grid-template-columns: 1fr 64px 1.1fr 64px 0.85fr;
   grid-template-rows: auto 1fr;
   gap: 0;
   background: var(--card);
@@ -997,7 +997,7 @@ body {
 
 /* Tablet: hide player column, keep games↔achs */
 @media (max-width: 950px) {
-  .neural-map { grid-template-columns: 1fr 56px 1fr; }
+  .neural-map { grid-template-columns: 1fr 64px 1fr; }
   .neural-col-achs    { grid-column: 3; }
   .neural-gap-2       { display: none; }
   .neural-col-players { display: none; }
