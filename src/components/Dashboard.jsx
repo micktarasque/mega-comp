@@ -965,94 +965,166 @@ function RoomSelector({ rooms, selectedId, onSelect, onEdit }) {
   )
 }
 
-// ── Main export ───────────────────────────────────────────────────────────────
-// ── Schedule panel ────────────────────────────────────────────────────────────
-function SchedulePanel({ roomGames, games }) {
-  const doneCount = roomGames.filter(rg => games.some(g => g.roomGameId === rg.id)).length
-  const pct = roomGames.length ? Math.round((doneCount / roomGames.length) * 100) : 0
+// ── Neural Connection Map (Games × Achievements) ──────────────────────────────
+function NeuralConnectionMap({ roomGames, games, achievements, stats }) {
+  const containerRef = useRef(null)
+  const gameNodeRefs = useRef({})
+  const achNodeRefs  = useRef({})
+  const [lines, setLines] = useState([])
 
-  if (roomGames.length === 0) return (
-    <div className="cockpit-panel">
-      <div className="panel-header"><StatusDot color="#00C2FF" /><span>◄ GAME SCHEDULE ►</span></div>
-      <div style={{ color: 'var(--muted)', fontSize: '0.8rem', fontFamily: "'Courier New', monospace", textAlign: 'center', padding: '1.5rem 0', letterSpacing: '0.12em' }}>
-        NO EVENTS QUEUED
-      </div>
-    </div>
-  )
+  const playerMap  = Object.fromEntries(stats.map(p => [p.id, p]))
+  const doneIds    = new Set(games.map(g => g.roomGameId).filter(Boolean))
+  const linkedAchs = achievements.filter(a => a.roomGameId)
+  const freeAchs   = achievements.filter(a => !a.roomGameId)
+  const doneCount  = doneIds.size
+  const pct        = roomGames.length ? Math.round((doneCount / roomGames.length) * 100) : 0
+  const claimed    = achievements.filter(a => a.earnedByIds.length > 0).length
+  const totalPts   = achievements.reduce((s, a) => s + a.pointValue, 0)
 
-  return (
-    <div className="cockpit-panel">
-      <div className="panel-header"><StatusDot color="#00C2FF" /><span>◄ GAME SCHEDULE ►</span></div>
-      <div>
-        {roomGames.map(rg => {
-          const done = games.some(g => g.roomGameId === rg.id)
-          return (
-            <div key={rg.id} className={`dash-sched-row ${done ? 'done' : ''}`}>
-              <span className="dash-sched-order">#{rg.order}</span>
-              <span className="dash-sched-name">{rg.name}</span>
-              {rg.pointsMode === 'custom' && <span className="pts-mode-badge custom">✦</span>}
-              <span className={`dash-sched-status ${done ? 'done' : 'pending'}`}>
-                {done ? '✓' : '○'}
-              </span>
-            </div>
-          )
-        })}
-      </div>
-      <div className="dash-sched-progress">
-        <span style={{ color: pct === 100 ? '#43E97B' : 'var(--muted)' }}>{doneCount}/{roomGames.length}</span>
-        <div className="dash-sched-bar-track">
-          <div className="dash-sched-bar-fill" style={{ width: `${pct}%` }} />
-        </div>
-        <span style={{ color: pct === 100 ? '#43E97B' : 'var(--arc-cyan)' }}>{pct}%</span>
-      </div>
-    </div>
-  )
-}
+  // Build ordered achievement list: linked ones in game order, then free ones
+  const orderedAchs = [
+    ...roomGames.flatMap(rg => linkedAchs.filter(a => a.roomGameId === rg.id)),
+    ...freeAchs,
+  ]
 
-// ── Achievements panel ────────────────────────────────────────────────────────
-function AchievementsPanel({ achievements, stats }) {
-  const playerMap = Object.fromEntries(stats.map(p => [p.id, p]))
-  const claimed   = achievements.filter(a => a.earnedByIds.length > 0).length
-  const totalPts  = achievements.reduce((s, a) => s + a.pointValue, 0)
+  useEffect(() => {
+    function measure() {
+      const container = containerRef.current
+      if (!container) return
+      const cr = container.getBoundingClientRect()
+      const newLines = []
+      achievements.forEach(ach => {
+        if (!ach.roomGameId) return
+        const gEl = gameNodeRefs.current[ach.roomGameId]
+        const aEl = achNodeRefs.current[ach.id]
+        if (!gEl || !aEl) return
+        const gr = gEl.getBoundingClientRect()
+        const ar = aEl.getBoundingClientRect()
+        newLines.push({
+          id:      ach.id,
+          x1:      gr.right  - cr.left,
+          y1:      gr.top    + gr.height / 2 - cr.top,
+          x2:      ar.left   - cr.left,
+          y2:      ar.top    + ar.height / 2 - cr.top,
+          claimed: ach.earnedByIds.length > 0,
+        })
+      })
+      setLines(newLines)
+    }
+    measure()
+    window.addEventListener('resize', measure)
+    return () => window.removeEventListener('resize', measure)
+  }, [roomGames, achievements, games, stats])
 
-  if (achievements.length === 0) return (
-    <div className="cockpit-panel">
-      <div className="panel-header"><StatusDot color="#FFD700" /><span>◄ ACHIEVEMENTS ►</span></div>
-      <div style={{ color: 'var(--muted)', fontSize: '0.8rem', fontFamily: "'Courier New', monospace", textAlign: 'center', padding: '1.5rem 0', letterSpacing: '0.12em' }}>
-        NO ACHIEVEMENTS SET
-      </div>
-    </div>
-  )
+  const hasAny = roomGames.length > 0 || achievements.length > 0
 
   return (
-    <div className="cockpit-panel">
-      <div className="panel-header">
-        <StatusDot color="#FFD700" />
-        <span>◄ ACHIEVEMENTS ►</span>
-        <span style={{ marginLeft: 'auto', fontFamily: "'Courier New', monospace", fontSize: '0.65rem', color: '#FFD700', letterSpacing: '0.08em' }}>
-          {claimed}/{achievements.length} CLAIMED
-        </span>
-      </div>
-      <div>
-        {achievements.map(a => {
-          const earner = a.earnedByIds[0] ? playerMap[a.earnedByIds[0]] : null
+    <div className="neural-map" ref={containerRef}>
+      {/* SVG connection layer — covers full container */}
+      <svg className="neural-svg">
+        <defs>
+          <filter id="neon-glow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="2.5" result="blur" />
+            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+          </filter>
+        </defs>
+        {lines.map(l => {
+          const mx = (l.x1 + l.x2) / 2
+          const path = `M ${l.x1} ${l.y1} C ${mx} ${l.y1}, ${mx} ${l.y2}, ${l.x2} ${l.y2}`
+          const color = l.claimed ? '#FFD700' : 'var(--arc-cyan)'
           return (
-            <div key={a.id} className="dash-ach-row" style={{ background: earner ? (earner.color + '08') : undefined }}>
-              <span className="dash-ach-icon">{a.icon}</span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="dash-ach-name">{a.name}</div>
-                {earner
-                  ? <div className="dash-ach-earner" style={{ color: earner.color }}>🏅 {earner.name}</div>
-                  : <div className="dash-ach-earner" style={{ color: 'var(--muted2)' }}>unclaimed</div>}
-              </div>
-              <span className="dash-ach-pts" style={{ color: '#FFD700', textShadow: '0 0 8px rgba(255,215,0,0.4)' }}>+{a.pointValue}</span>
-            </div>
+            <g key={l.id}>
+              {/* Glow halo */}
+              <path d={path} fill="none" stroke={color} strokeWidth="5" opacity={l.claimed ? 0.12 : 0.08} filter="url(#neon-glow)" />
+              {/* Animated data-flow line */}
+              <path d={path} fill="none" stroke={color} strokeWidth={l.claimed ? 1.5 : 1}
+                opacity={l.claimed ? 0.9 : 0.55}
+                strokeDasharray="7 4"
+                className={l.claimed ? 'neural-line claimed' : 'neural-line'}
+              />
+              {/* End-node dot */}
+              <circle cx={l.x2} cy={l.y2} r="3.5" fill={color} opacity={l.claimed ? 1 : 0.7}
+                filter={l.claimed ? 'url(#neon-glow)' : undefined} />
+            </g>
           )
         })}
+      </svg>
+
+      {/* Header spanning full width */}
+      <div className="neural-header">
+        <span className="neural-header-label">◈ GAME SCHEDULE</span>
+        <span className="neural-header-center">NEURAL LINK MATRIX</span>
+        <span className="neural-header-label" style={{ textAlign: 'right' }}>ACHIEVEMENTS ◈</span>
       </div>
-      <div className="dash-ach-summary">
-        <span>{achievements.length - claimed} still up for grabs</span>
-        <span style={{ color: '#FFD700' }}>{totalPts} pts total</span>
+
+      {/* Left column — games */}
+      <div className="neural-col neural-col-games">
+        {roomGames.length === 0 ? (
+          <div className="neural-empty">NO EVENTS QUEUED</div>
+        ) : (
+          <>
+            {roomGames.map(rg => {
+              const done = doneIds.has(rg.id)
+              const linked = linkedAchs.filter(a => a.roomGameId === rg.id).length
+              return (
+                <div key={rg.id} ref={el => gameNodeRefs.current[rg.id] = el}
+                  className={`neural-node game-node ${done ? 'done' : 'pending'}`}>
+                  <span className="nn-order">#{rg.order}</span>
+                  <span className="nn-name">{rg.name}</span>
+                  {linked > 0 && <span className="nn-link-count">⚡{linked}</span>}
+                  <span className={`nn-status ${done ? 'done' : ''}`}>{done ? '✓' : '○'}</span>
+                  <div className="nn-connector right" />
+                </div>
+              )
+            })}
+            <div className="neural-progress">
+              <span className={pct === 100 ? 'neural-progress-done' : ''}>{doneCount}/{roomGames.length}</span>
+              <div className="np-track"><div className="np-fill" style={{ width: `${pct}%` }} /></div>
+              <span className={pct === 100 ? 'neural-progress-done' : 'neural-progress-pct'}>{pct}%</span>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Centre gap — SVG draws through here */}
+      <div className="neural-gap" />
+
+      {/* Right column — achievements */}
+      <div className="neural-col neural-col-achs">
+        {achievements.length === 0 ? (
+          <div className="neural-empty" style={{ textAlign: 'right' }}>NO ACHIEVEMENTS SET</div>
+        ) : (
+          <>
+            {orderedAchs.map(a => {
+              const earner = a.earnedByIds[0] ? playerMap[a.earnedByIds[0]] : null
+              const isFree = !a.roomGameId
+              return (
+                <div key={a.id} ref={el => achNodeRefs.current[a.id] = el}
+                  className={`neural-node ach-node ${earner ? 'claimed' : ''} ${isFree ? 'free' : ''}`}
+                  style={earner ? { borderColor: earner.color + '55', background: earner.color + '08' } : undefined}>
+                  {!isFree && <div className="nn-connector left" />}
+                  <span className="nn-icon">{a.icon}</span>
+                  <div className="nn-ach-text">
+                    <div className="nn-name">{a.name}</div>
+                    {earner
+                      ? <div className="nn-earner" style={{ color: earner.color }}>🏅 {earner.name}</div>
+                      : <div className="nn-earner nn-unclaimed">unclaimed</div>}
+                  </div>
+                  <span className="nn-pts" style={a.pointValue < 0 ? { color: '#FF6B8A' } : undefined}>
+                    {a.pointValue > 0 ? '+' : ''}{a.pointValue}
+                  </span>
+                </div>
+              )
+            })}
+            {freeAchs.length > 0 && linkedAchs.length > 0 && (
+              <div className="neural-free-label">── general ──</div>
+            )}
+            <div className="neural-ach-summary">
+              <span>{achievements.length - claimed} up for grabs</span>
+              <span className="neural-pts-total">{totalPts} pts</span>
+            </div>
+          </>
+        )}
       </div>
     </div>
   )
@@ -1158,10 +1230,7 @@ export default function Dashboard({ onRoomOpen }) {
         </div>
       )}
 
-      <div className="dual-panel">
-        <SchedulePanel roomGames={roomGames} games={games} />
-        <AchievementsPanel achievements={achievements} stats={stats} />
-      </div>
+      <NeuralConnectionMap roomGames={roomGames} games={games} achievements={achievements} stats={stats} />
 
       {games.length > 0 && <ActivityTicker games={games} />}
 
