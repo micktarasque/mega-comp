@@ -240,6 +240,10 @@ export async function updateAchievement(id, updates) {
   }).eq('id', id)
 }
 
+export async function setAchievementGameLink(achId, roomGameId) {
+  await db().from('achievements').update({ room_game_id: roomGameId ?? null }).eq('id', achId)
+}
+
 export async function deleteAchievement(id) {
   await db().from('achievements').delete().eq('id', id)
 }

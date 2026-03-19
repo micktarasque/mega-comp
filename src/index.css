@@ -981,6 +981,55 @@ body {
   text-align: center; margin: 0.1rem 0;
 }
 
+/* ── Drag & drop ── */
+.game-node { cursor: grab; }
+.game-node:active, .game-node.drag-source { cursor: grabbing; }
+.game-node.drag-source {
+  border-color: var(--arc-cyan) !important;
+  box-shadow: 0 0 14px rgba(0,229,255,0.35);
+  opacity: 0.9;
+}
+.neural-map.dragging { cursor: crosshair; }
+.neural-map.saving   { pointer-events: none; opacity: 0.85; }
+
+.ach-node.droppable {
+  border-color: rgba(0,229,255,0.2);
+  transition: border-color 0.12s, box-shadow 0.12s, transform 0.12s;
+}
+.ach-node.drop-target {
+  border-color: var(--arc-cyan) !important;
+  box-shadow: 0 0 18px rgba(0,229,255,0.45), inset 0 0 10px rgba(0,229,255,0.06) !important;
+  transform: scale(1.025);
+}
+
+/* Unlink button — shows on hover over a game-linked ach node */
+.nn-unlink-btn {
+  position: absolute;
+  left: -11px; top: 50%; transform: translateY(-50%);
+  width: 18px; height: 18px; border-radius: 50%;
+  background: rgba(255, 71, 87, 0.18);
+  border: 1px solid rgba(255, 71, 87, 0.45);
+  color: #FF4757; cursor: pointer;
+  font-size: 0.65rem; font-weight: 900; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity 0.15s, background 0.12s;
+  z-index: 10;
+}
+.nn-unlink-btn::before { content: '×'; }
+.ach-node:hover .nn-unlink-btn { opacity: 1; }
+.nn-unlink-btn:hover { background: rgba(255, 71, 87, 0.38) !important; }
+
+/* Drag hint tooltip on game nodes */
+.game-node::after {
+  content: 'drag to link ▶';
+  position: absolute; right: calc(100% + 8px); top: 50%; transform: translateY(-50%);
+  font-family: 'Courier New', monospace; font-size: 0.5rem; letter-spacing: 0.1em;
+  color: var(--arc-cyan); white-space: nowrap;
+  opacity: 0; pointer-events: none; transition: opacity 0.2s;
+}
+.game-node:hover::after { opacity: 0.5; }
+.neural-map.dragging .game-node::after { opacity: 0; }
+
 /* Player node */
 .player-node {
   border-color: rgba(255,255,255,0.1);

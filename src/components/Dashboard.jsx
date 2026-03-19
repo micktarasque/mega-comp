@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useMemo } from 'react'
-import { getRoomStats, getRooms, getGames, getRoomGames, getAchievements, deleteGame, PLACE_EMOJI } from '../db/supabaseDb'
+import { getRoomStats, getRooms, getGames, getRoomGames, getAchievements, deleteGame, setAchievementGameLink, PLACE_EMOJI } from '../db/supabaseDb'
 
 const LAST_ROOM_KEY = 'mc_last_room'
 
@@ -966,13 +966,20 @@ function RoomSelector({ rooms, selectedId, onSelect, onEdit }) {
 }
 
 // ── Neural Connection Map (Games × Achievements) ──────────────────────────────
-function NeuralConnectionMap({ roomGames, games, achievements, stats }) {
+function NeuralConnectionMap({ roomGames, games, achievements, stats, onLinkChange }) {
   const containerRef   = useRef(null)
   const gameNodeRefs   = useRef({})
   const achNodeRefs    = useRef({})
   const playerNodeRefs = useRef({})
   const [gameLines,   setGameLines]   = useState([])
   const [playerLines, setPlayerLines] = useState([])
+
+  // ── Drag state ───────────────────────────────────────────────────────────────
+  const [drag,        setDrag]        = useState(null)  // { fromGameId, x1, y1 }
+  const [dragCursor,  setDragCursor]  = useState({ x: 0, y: 0 })
+  const [dropTarget,  setDropTarget]  = useState(null)  // achId being hovered
+  const [saving,      setSaving]      = useState(false)
+  const dropTargetRef = useRef(null)
 
   const playerMap  = Object.fromEntries(stats.map(p => [p.id, p]))
   const doneIds    = new Set(games.map(g => g.roomGameId).filter(Boolean))
@@ -1057,11 +1064,62 @@ function NeuralConnectionMap({ roomGames, games, achievements, stats }) {
     return () => window.removeEventListener('resize', measure)
   }, [roomGames, achievements, games, stats])
 
+  // ── Drag handlers ────────────────────────────────────────────────────────────
+  function startDrag(e, rgId) {
+    e.preventDefault()
+    const container = containerRef.current
+    if (!container) return
+    const cr = container.getBoundingClientRect()
+    const el = gameNodeRefs.current[rgId]
+    if (!el) return
+    const er = el.getBoundingClientRect()
+    setDrag({ fromGameId: rgId, x1: er.right - cr.left, y1: er.top + er.height / 2 - cr.top })
+    setDragCursor({ x: e.clientX - cr.left, y: e.clientY - cr.top })
+  }
+
+  useEffect(() => {
+    if (!drag) return
+    function onMove(e) {
+      const container = containerRef.current
+      if (!container) return
+      const cr = container.getBoundingClientRect()
+      setDragCursor({ x: e.clientX - cr.left, y: e.clientY - cr.top })
+      // Hit-test ach nodes
+      const hit = Object.entries(achNodeRefs.current).find(([, el]) => {
+        if (!el) return false
+        const r = el.getBoundingClientRect()
+        return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom
+      })
+      const id = hit ? hit[0] : null
+      dropTargetRef.current = id
+      setDropTarget(id)
+    }
+    async function onUp() {
+      const target = dropTargetRef.current
+      const fromGameId = drag.fromGameId
+      setDrag(null); setDropTarget(null); dropTargetRef.current = null
+      if (target) {
+        setSaving(true)
+        try { await setAchievementGameLink(target, fromGameId); onLinkChange() }
+        finally { setSaving(false) }
+      }
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+    return () => { window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp) }
+  }, [drag])
+
+  async function unlinkAch(achId) {
+    setSaving(true)
+    try { await setAchievementGameLink(achId, null); onLinkChange() }
+    finally { setSaving(false) }
+  }
+
   const totalLinks = gameLines.length + playerLines.length
   const maxPts = Math.max(1, ...achievements.map(a => Math.max(1, a.pointValue)))
 
   return (
-    <div className="neural-map" ref={containerRef}>
+    <div className={`neural-map${drag ? ' dragging' : ''}${saving ? ' saving' : ''}`} ref={containerRef}>
       {/* HUD corner brackets */}
       <div className="neural-corner tl" /><div className="neural-corner tr" />
       <div className="neural-corner bl" /><div className="neural-corner br" />
@@ -1175,6 +1233,21 @@ function NeuralConnectionMap({ roomGames, games, achievements, stats }) {
             </g>
           )
         })}
+        {/* ── Live drag line ── */}
+        {drag && (() => {
+          const liveCpx = Math.max(90, Math.abs(dragCursor.y - drag.y1) * 0.65)
+          const lp = `M ${drag.x1} ${drag.y1} C ${drag.x1 + liveCpx} ${drag.y1}, ${dragCursor.x - liveCpx} ${dragCursor.y}, ${dragCursor.x} ${dragCursor.y}`
+          const onTarget = !!dropTarget
+          return (
+            <g>
+              <path d={lp} fill="none" stroke="#00E5FF" strokeWidth={12} opacity="0.04" filter="url(#bloom-strong)" />
+              <path d={lp} fill="none" stroke="#00E5FF" strokeWidth={onTarget ? 2 : 1.5}
+                opacity={onTarget ? 0.95 : 0.6} strokeDasharray="6 4" className="neural-line" />
+              <circle cx={dragCursor.x} cy={dragCursor.y} r={onTarget ? 8 : 5}
+                fill="url(#particle-cyan)" filter={onTarget ? 'url(#bloom-strong)' : 'url(#bloom-soft)'} />
+            </g>
+          )
+        })()}
       </svg>
 
       {/* Full-width header */}
@@ -1206,7 +1279,9 @@ function NeuralConnectionMap({ roomGames, games, achievements, stats }) {
               const linked = linkedAchs.filter(a => a.roomGameId === rg.id).length
               return (
                 <div key={rg.id} ref={el => gameNodeRefs.current[rg.id] = el}
-                  className={`neural-node game-node ${done ? 'done' : 'pending'}`}>
+                  className={`neural-node game-node ${done ? 'done' : 'pending'} ${drag?.fromGameId === rg.id ? 'drag-source' : ''}`}
+                  onPointerDown={e => startDrag(e, rg.id)}
+                  style={{ touchAction: 'none', userSelect: 'none' }}>
                   <span className="nn-order">#{rg.order}</span>
                   <span className="nn-name">{rg.name}</span>
                   {linked > 0 && <span className="nn-link-count">⚡{linked}</span>}
@@ -1238,9 +1313,13 @@ function NeuralConnectionMap({ roomGames, games, achievements, stats }) {
               const isFree = !a.roomGameId
               return (
                 <div key={a.id} ref={el => achNodeRefs.current[a.id] = el}
-                  className={`neural-node ach-node ${earner ? 'claimed' : ''} ${isFree ? 'free' : ''}`}
+                  className={`neural-node ach-node ${earner ? 'claimed' : ''} ${isFree ? 'free' : ''} ${drag ? 'droppable' : ''} ${dropTarget === a.id ? 'drop-target' : ''}`}
                   style={earner ? { '--earner-color': earner.color } : undefined}>
                   {!isFree && <div className={`nn-connector left ${earner ? 'claimed' : 'active'}`} />}
+                  {!isFree && !drag && (
+                    <button className="nn-unlink-btn" title="Remove game link"
+                      onClick={e => { e.stopPropagation(); unlinkAch(a.id) }} />
+                  )}
                   <span className="nn-icon">{a.icon}</span>
                   <div className="nn-ach-text">
                     <div className="nn-name">{a.name}</div>
@@ -1395,7 +1474,8 @@ export default function Dashboard({ onRoomOpen }) {
         </div>
       )}
 
-      <NeuralConnectionMap roomGames={roomGames} games={games} achievements={achievements} stats={stats} />
+      <NeuralConnectionMap roomGames={roomGames} games={games} achievements={achievements} stats={stats}
+        onLinkChange={() => refreshRoomData(selectedRoomId)} />
 
       {games.length > 0 && <ActivityTicker games={games} />}
 
