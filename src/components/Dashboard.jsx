@@ -1214,7 +1214,8 @@ function NeuralConnectionMap({ roomGames, games, achievements, stats, onLinkChan
         {/* ── Achievement → Player ── */}
         {playerLines.map((l, idx) => {
           const w        = Math.min(1, Math.max(0, l.pts) / maxPts)
-          const cpx      = Math.max(90, Math.abs(l.y2 - l.y1) * 0.65)
+          const span     = l.x2 - l.x1
+          const cpx      = Math.min(span * 0.45, Math.max(span * 0.25, Math.abs(l.y2 - l.y1) * 0.5))
           const pathD    = `M ${l.x1} ${l.y1} C ${l.x1 + cpx} ${l.y1}, ${l.x2 - cpx} ${l.y2}, ${l.x2} ${l.y2}`
           const pathId   = `pp-path-${l.id.replace(/[-_]/g,'')}`
           const gradId   = `url(#pp-${l.pid.replace(/-/g,'')})`
@@ -1253,7 +1254,10 @@ function NeuralConnectionMap({ roomGames, games, achievements, stats, onLinkChan
           const isAch    = drag.type === 'ach'
           const color    = isAch ? '#FFD700' : '#00E5FF'
           const gradId   = isAch ? 'url(#particle-gold)' : 'url(#particle-cyan)'
-          const liveCpx  = Math.max(90, Math.abs(dragCursor.y - drag.y1) * 0.65)
+          const liveSpan = Math.abs(dragCursor.x - drag.x1)
+          const liveCpx  = isAch
+            ? Math.min(liveSpan * 0.45, Math.max(liveSpan * 0.25, Math.abs(dragCursor.y - drag.y1) * 0.5))
+            : Math.max(90, Math.abs(dragCursor.y - drag.y1) * 0.65)
           const lp = `M ${drag.x1} ${drag.y1} C ${drag.x1 + liveCpx} ${drag.y1}, ${dragCursor.x - liveCpx} ${dragCursor.y}, ${dragCursor.x} ${dragCursor.y}`
           const onTarget = !!dropTarget
           return (
