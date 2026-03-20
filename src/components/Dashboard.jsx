@@ -560,12 +560,27 @@ function PlayerCard({ player, rank, games, allStats }) {
   const seconds = useMemo(() => games.filter(g => g.placements.find(p => p.playerId === player.id)?.place === 2).length, [games, player.id])
   const thirds  = useMemo(() => games.filter(g => g.placements.find(p => p.playerId === player.id)?.place === 3).length, [games, player.id])
 
+  const played    = Math.max(player.played, 1)
+  const totalPts  = Math.max(player.points, 1)
+  const compPct   = Math.round((player.competitionPoints / totalPts) * 100)
+  const achPct    = 100 - compPct
+
+  const placements = [
+    { label: 'WIN',  val: player.wins, color: '#43E97B', icon: '🏆' },
+    { label: '2ND',  val: seconds,     color: '#C0C8D8', icon: '🥈' },
+    { label: '3RD',  val: thirds,      color: '#CD7F32', icon: '🥉' },
+    { label: 'LOSS', val: losses,      color: '#FF4040', icon: '💀' },
+  ]
+
+  const rankColor = rank === 0 ? '#FFD700' : rank === 1 ? '#C0C8D8' : rank === 2 ? '#CD7F32' : 'var(--muted)'
+
   return (
     <div className="player-cockpit-card" style={{ '--player-color': player.color }}>
       <div className="pcc-top-bar" style={{ background: `linear-gradient(90deg, ${player.color}40, transparent)`, borderColor: player.color + '60' }} />
 
+      {/* ── Header: rank · avatar · name ── */}
       <div className="pcc-header">
-        <span className="pcc-rank-num" style={{ color: rank === 0 ? '#FFD700' : rank === 1 ? '#C0C8D8' : rank === 2 ? '#CD7F32' : 'var(--muted)' }}>
+        <span className="pcc-rank-num" style={{ color: rankColor }}>
           {rank === 0 ? '🥇' : rank === 1 ? '🥈' : rank === 2 ? '🥉' : `#${rank + 1}`}
         </span>
         <div className="pcc-avatar-wrap">
@@ -576,39 +591,53 @@ function PlayerCard({ player, rank, games, allStats }) {
         </div>
         <div className="pcc-name-block">
           <div className="pcc-name">{player.name}</div>
-          <div className="pcc-fav">{player.favGame}</div>
+          <div className="pcc-sub-row">
+            <span className="pcc-games-played">{player.played} GP</span>
+            {player.streak > 1 && <span className="pcc-streak-chip">🔥{player.streak}</span>}
+          </div>
         </div>
         <StatusDot color={player.color} />
       </div>
 
-      <div className="pcc-pts-row">
-        <div className="pcc-pts-big" style={{ color: player.color, textShadow: `0 0 20px ${player.color}44` }}>{pts}</div>
-        <div className="pcc-pts-lbl">PTS</div>
+      {/* ── Points ── */}
+      <div className="pcc-pts-section">
+        <div className="pcc-pts-row">
+          <div className="pcc-pts-big" style={{ color: player.color, textShadow: `0 0 20px ${player.color}44` }}>{pts}</div>
+          <div className="pcc-pts-lbl">PTS</div>
+        </div>
+        {player.points > 0 && (player.achievementPoints > 0 || player.competitionPoints > 0) && (
+          <div className="pcc-pts-split">
+            <div className="pcc-pts-split-bar">
+              <div className="pcc-split-comp" style={{ width: `${compPct}%`, background: player.color, boxShadow: `0 0 6px ${player.color}88` }} />
+              <div className="pcc-split-ach"  style={{ width: `${achPct}%` }} />
+            </div>
+            <div className="pcc-pts-split-labels">
+              <span><span className="pcc-split-num" style={{ color: player.color }}>{player.competitionPoints}</span> <span className="pcc-split-tag">COMP</span></span>
+              <span><span className="pcc-split-num" style={{ color: '#FFD700' }}>{player.achievementPoints}</span> <span className="pcc-split-tag">ACH</span></span>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Pts breakdown */}
-      {(player.achievementPoints > 0 || player.competitionPoints > 0) && (
-        <div className="pcc-pts-breakdown">
-          <span style={{ color: player.color }}>{player.competitionPoints} comp</span>
-          <span style={{ color: 'var(--muted2)' }}>+</span>
-          <span style={{ color: '#FFD700' }}>{player.achievementPoints} ach</span>
-        </div>
-      )}
-
-      <div className="pcc-breakdown">
-        {[
-          { label: 'W', val: player.wins, color: '#43E97B' },
-          { label: '2nd', val: seconds, color: '#C0C8D8' },
-          { label: '3rd', val: thirds, color: '#CD7F32' },
-          { label: 'L', val: losses, color: '#FF4040' },
-        ].map(s => (
-          <div key={s.label} className="pcc-breakdown-cell">
-            <div style={{ color: s.color, fontWeight: 800, fontSize: '1.1rem' }}>{s.val}</div>
-            <div style={{ color: 'var(--muted2)', fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.08em' }}>{s.label}</div>
+      {/* ── Placements ── */}
+      <div className="pcc-divider"><span>RESULTS</span></div>
+      <div className="pcc-placement-list">
+        {placements.map(s => (
+          <div key={s.label} className="pcc-place-row">
+            <span className="pcc-place-icon">{s.icon}</span>
+            <span className="pcc-place-lbl">{s.label}</span>
+            <div className="pcc-place-track">
+              <div className="pcc-place-fill"
+                style={{ width: `${(s.val / played) * 100}%`, background: s.color, boxShadow: s.val ? `0 0 5px ${s.color}88` : 'none' }}
+              />
+            </div>
+            <span className="pcc-place-val" style={{ color: s.val ? s.color : 'var(--muted2)' }}>{s.val}</span>
           </div>
         ))}
       </div>
 
+      {/* ── Rates ── */}
+      <div className="pcc-divider"><span>RATES</span></div>
       <div className="pcc-rings-row">
         <div className="pcc-ring-cell">
           <div style={{ position: 'relative', display: 'inline-flex' }}>
@@ -625,18 +654,18 @@ function PlayerCard({ player, rank, games, allStats }) {
           <div className="pcc-ring-lbl">PODIUM%</div>
         </div>
         <div className="pcc-ring-cell">
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.15rem' }}>
-            {player.streak > 1
-              ? <span style={{ fontSize: '1.1rem', color: '#FF6B35', fontWeight: 800 }}>🔥{player.streak}</span>
-              : <span style={{ fontSize: '1.1rem', color: 'var(--muted2)', fontWeight: 800 }}>—</span>}
+          <div className="pcc-fav-game-box">
+            <span className="pcc-fav-game-text">{player.favGame === '—' ? '—' : player.favGame}</span>
           </div>
-          <div className="pcc-ring-lbl">STREAK</div>
+          <div className="pcc-ring-lbl">BEST GAME</div>
         </div>
       </div>
 
+      {/* ── Recent form ── */}
+      <div className="pcc-divider"><span>RECENT FORM</span></div>
       <div className="pcc-form-row">
         {form.map((place, i) => <FormSquare key={i} place={place} />)}
-        {form.length === 0 && <span style={{ fontSize: '0.72rem', color: 'var(--muted2)' }}>no games</span>}
+        {form.length === 0 && <span style={{ fontSize: '0.72rem', color: 'var(--muted2)' }}>no games yet</span>}
       </div>
 
       {badges.length > 0 && (
@@ -645,7 +674,6 @@ function PlayerCard({ player, rank, games, allStats }) {
         </div>
       )}
 
-      {/* Achievement badges earned in this room */}
       {player.earnedAchs?.length > 0 && (
         <div className="pcc-ach-row">
           {player.earnedAchs.map(a => (
@@ -965,6 +993,87 @@ function RoomSelector({ rooms, selectedId, onSelect, onEdit }) {
   )
 }
 
+// ── Drop confirmation dialog ───────────────────────────────────────────────────
+function DropConfirmModal({ pending, onConfirm, onCancel }) {
+  const isGame = pending.type === 'game'
+  return (
+    <div className="drop-overlay" onClick={onCancel}>
+      <div className="drop-modal" onClick={e => e.stopPropagation()}>
+        <div className="drop-modal-icon">{isGame ? '🔗' : '🏅'}</div>
+        <div className="drop-modal-title">{isGame ? 'LINK TO GAME?' : 'AWARD TO PLAYER?'}</div>
+        <div className="drop-modal-body">
+          <span className="drop-modal-from">{pending.fromLabel}</span>
+          <span className="drop-modal-arrow">→</span>
+          <span className="drop-modal-to">{pending.targetLabel}</span>
+        </div>
+        <div className="drop-modal-actions">
+          <button className="drop-btn cancel" onClick={onCancel}>✕ Cancel</button>
+          <button className="drop-btn confirm" onClick={onConfirm}>✓ Confirm</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Mobile Accordion View ─────────────────────────────────────────────────────
+function NeuralMapMobile({ roomGames, achievements, stats }) {
+  const [expanded, setExpanded] = useState({})
+  const toggle = id => setExpanded(prev => ({ ...prev, [id]: !(prev[id] ?? true) }))
+  const playerMap  = Object.fromEntries(stats.map(p => [p.id, p]))
+  const linkedAchs = achievements.filter(a => a.roomGameId)
+  const freeAchs   = achievements.filter(a => !a.roomGameId)
+
+  const sections = [
+    ...roomGames
+      .map(rg => ({ id: rg.id, label: `#${rg.order} ${rg.name}`, achs: linkedAchs.filter(a => a.roomGameId === rg.id) }))
+      .filter(s => s.achs.length > 0),
+    ...(freeAchs.length > 0 ? [{ id: '__free', label: '★ General', achs: freeAchs }] : []),
+  ]
+
+  return (
+    <div className="neural-map-mobile">
+      <div className="nmm-header">⚡ ACHIEVEMENTS</div>
+      {achievements.length === 0 && <div className="nmm-empty">No achievements set</div>}
+      {sections.map(sec => {
+        const open    = expanded[sec.id] ?? true
+        const claimed = sec.achs.filter(a => a.earnedByIds.length > 0).length
+        return (
+          <div key={sec.id} className="nmm-section">
+            <button className="nmm-section-hd" onClick={() => toggle(sec.id)}>
+              <span className="nmm-section-label">{sec.label}</span>
+              <span className="nmm-section-meta">{claimed}/{sec.achs.length} claimed</span>
+              <span className="nmm-chevron">{open ? '▲' : '▼'}</span>
+            </button>
+            {open && (
+              <div className="nmm-ach-list">
+                {sec.achs.map(a => {
+                  const earner = a.earnedByIds[0] ? playerMap[a.earnedByIds[0]] : null
+                  return (
+                    <div key={a.id} className={`nmm-ach-row${earner ? ' claimed' : ''}`}
+                      style={earner ? { '--earner-color': earner.color } : undefined}>
+                      <span className="nmm-ach-icon">{a.icon}</span>
+                      <div className="nmm-ach-body">
+                        <div className="nmm-ach-name">{a.name}</div>
+                        {a.description && <div className="nmm-ach-desc">{a.description}</div>}
+                        {earner
+                          ? <div className="nmm-ach-earner" style={{ color: earner.color }}>🏅 {earner.name}</div>
+                          : <div className="nmm-ach-earner unclaimed">unclaimed</div>}
+                      </div>
+                      <span className="nmm-ach-pts" style={a.pointValue < 0 ? { color: '#FF6B8A' } : undefined}>
+                        {a.pointValue > 0 ? '+' : ''}{a.pointValue}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 // ── Neural Connection Map (Games × Achievements) ──────────────────────────────
 function NeuralConnectionMap({ roomGames, games, achievements, stats, onLinkChange }) {
   const containerRef   = useRef(null)
@@ -975,9 +1084,10 @@ function NeuralConnectionMap({ roomGames, games, achievements, stats, onLinkChan
   const [playerLines, setPlayerLines] = useState([])
 
   // ── Drag state ───────────────────────────────────────────────────────────────
-  const [drag,        setDrag]        = useState(null)  // { fromGameId, x1, y1 }
+  const [drag,        setDrag]        = useState(null)
   const [dragCursor,  setDragCursor]  = useState({ x: 0, y: 0 })
-  const [dropTarget,  setDropTarget]  = useState(null)  // achId being hovered
+  const [dropTarget,  setDropTarget]  = useState(null)
+  const [pendingDrop, setPendingDrop] = useState(null)  // awaiting confirmation
   const [saving,      setSaving]      = useState(false)
   const dropTargetRef = useRef(null)
 
@@ -1065,6 +1175,7 @@ function NeuralConnectionMap({ roomGames, games, achievements, stats, onLinkChan
 
   // ── Drag handlers ────────────────────────────────────────────────────────────
   function startGameDrag(e, rgId) {
+    if (window.innerWidth <= 700) return   // mobile: accordion only
     e.preventDefault()
     const container = containerRef.current
     if (!container) return
@@ -1077,6 +1188,7 @@ function NeuralConnectionMap({ roomGames, games, achievements, stats, onLinkChan
   }
 
   function startAchDrag(e, achId) {
+    if (window.innerWidth <= 700) return   // mobile: accordion only
     e.preventDefault()
     const container = containerRef.current
     if (!container) return
@@ -1095,7 +1207,6 @@ function NeuralConnectionMap({ roomGames, games, achievements, stats, onLinkChan
       if (!container) return
       const cr = container.getBoundingClientRect()
       setDragCursor({ x: e.clientX - cr.left, y: e.clientY - cr.top })
-      // Hit-test the relevant column based on drag type
       const refs = drag.type === 'game' ? achNodeRefs : playerNodeRefs
       const hit = Object.entries(refs.current).find(([, el]) => {
         if (!el) return false
@@ -1106,23 +1217,40 @@ function NeuralConnectionMap({ roomGames, games, achievements, stats, onLinkChan
       dropTargetRef.current = id
       setDropTarget(id)
     }
-    async function onUp() {
+    function onUp() {
       const target = dropTargetRef.current
       const { type, fromId } = drag
       setDrag(null); setDropTarget(null); dropTargetRef.current = null
-      if (target) {
-        setSaving(true)
-        try {
-          if (type === 'game') await setAchievementGameLink(target, fromId)
-          else                 await awardAchievement(fromId, target)
-          onLinkChange()
-        } finally { setSaving(false) }
+      if (!target) return
+      // Build human-readable labels for the confirmation dialog
+      let fromLabel, targetLabel
+      if (type === 'game') {
+        fromLabel   = roomGames.find(rg => rg.id === fromId)?.name ?? '?'
+        targetLabel = achievements.find(a => a.id === target)?.name ?? '?'
+      } else {
+        fromLabel   = achievements.find(a => a.id === fromId)?.name ?? '?'
+        targetLabel = achPlayers.find(p => p.id === target)?.name ?? '?'
       }
+      setPendingDrop({ type, fromId, target, fromLabel, targetLabel })
     }
     window.addEventListener('pointermove', onMove)
     window.addEventListener('pointerup', onUp)
     return () => { window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp) }
   }, [drag])
+
+  async function confirmDrop() {
+    if (!pendingDrop) return
+    const { type, fromId, target } = pendingDrop
+    setPendingDrop(null)
+    setSaving(true)
+    try {
+      if (type === 'game') await setAchievementGameLink(target, fromId)
+      else                 await awardAchievement(fromId, target)
+      onLinkChange()
+    } finally { setSaving(false) }
+  }
+
+  function cancelDrop() { setPendingDrop(null) }
 
   async function unlinkAch(achId) {
     setSaving(true)
@@ -1134,6 +1262,9 @@ function NeuralConnectionMap({ roomGames, games, achievements, stats, onLinkChan
   const maxPts = Math.max(1, ...achievements.map(a => Math.max(1, a.pointValue)))
 
   return (
+    <>
+    {pendingDrop && <DropConfirmModal pending={pendingDrop} onConfirm={confirmDrop} onCancel={cancelDrop} />}
+    <NeuralMapMobile roomGames={roomGames} achievements={achievements} stats={stats} />
     <div className={`neural-map${drag ? ' dragging' : ''}${saving ? ' saving' : ''}`} ref={containerRef}>
       {/* HUD corner brackets */}
       <div className="neural-corner tl" /><div className="neural-corner tr" />
@@ -1331,13 +1462,15 @@ function NeuralConnectionMap({ roomGames, games, achievements, stats, onLinkChan
         ) : (
           <>
             {orderedAchs.map(a => {
-              const earner = a.earnedByIds[0] ? playerMap[a.earnedByIds[0]] : null
-              const isFree = !a.roomGameId
+              const earners     = a.earnedByIds.map(id => playerMap[id]).filter(Boolean)
+              const firstEarner = earners[0] ?? null
+              const isFree      = !a.roomGameId
+              const canAward    = !a.awardedOnce || earners.length === 0
               return (
                 <div key={a.id} ref={el => achNodeRefs.current[a.id] = el}
-                  className={`neural-node ach-node ${earner ? 'claimed' : ''} ${isFree ? 'free' : ''} ${drag?.type === 'game' ? 'droppable' : ''} ${drag?.type === 'game' && dropTarget === a.id ? 'drop-target' : ''}`}
-                  style={earner ? { '--earner-color': earner.color } : undefined}>
-                  {!isFree && <div className={`nn-connector left ${earner ? 'claimed' : 'active'}`} />}
+                  className={`neural-node ach-node ${earners.length ? 'claimed' : ''} ${isFree ? 'free' : ''} ${drag?.type === 'game' ? 'droppable' : ''} ${drag?.type === 'game' && dropTarget === a.id ? 'drop-target' : ''}`}
+                  style={firstEarner ? { '--earner-color': firstEarner.color } : undefined}>
+                  {!isFree && <div className={`nn-connector left ${earners.length ? 'claimed' : 'active'}`} />}
                   {!isFree && !drag && (
                     <button className="nn-unlink-btn" title="Remove game link"
                       onClick={e => { e.stopPropagation(); unlinkAch(a.id) }} />
@@ -1345,17 +1478,25 @@ function NeuralConnectionMap({ roomGames, games, achievements, stats, onLinkChan
                   <span className="nn-icon">{a.icon}</span>
                   <div className="nn-ach-text">
                     <div className="nn-name">{a.name}</div>
-                    {earner
-                      ? <div className="nn-earner" style={{ color: earner.color }}>🏅 {earner.name}</div>
+                    {a.description && <div className="nn-desc">{a.description}</div>}
+                    {earners.length > 0
+                      ? <div className="nn-earners-list">
+                          {earners.map(e => (
+                            <span key={e.id} className="nn-earner" style={{ color: e.color }}>🏅 {e.name}</span>
+                          ))}
+                        </div>
                       : <div className="nn-earner nn-unclaimed">unclaimed</div>}
                   </div>
                   <span className="nn-pts" style={a.pointValue < 0 ? { color: '#FF6B8A' } : undefined}>
                     {a.pointValue > 0 ? '+' : ''}{a.pointValue}
                   </span>
-                  <div className={`nn-connector right ${earner ? 'claimed' : 'ach-drag-handle'}`}
-                    onPointerDown={e => { e.stopPropagation(); startAchDrag(e, a.id) }}
-                    style={{ cursor: 'grab', touchAction: 'none' }}
-                    title="Drag to award to a player" />
+                  {canAward && (
+                    <div className={`nn-connector right ach-drag-handle`}
+                      onPointerDown={e => { e.stopPropagation(); startAchDrag(e, a.id) }}
+                      style={{ cursor: 'grab', touchAction: 'none' }}
+                      title="Drag to award to a player" />
+                  )}
+                  {!canAward && <div className="nn-connector right claimed" />}
                 </div>
               )
             })}
@@ -1396,6 +1537,7 @@ function NeuralConnectionMap({ roomGames, games, achievements, stats, onLinkChan
         )}
       </div>
     </div>
+    </>
   )
 }
 

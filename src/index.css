@@ -411,6 +411,13 @@ body {
 .pcc-name { font-size: 0.92rem; font-weight: 800; font-family: 'Courier New', monospace; }
 .pcc-fav { font-size: 0.65rem; color: rgba(0,229,255,0.55); font-family: 'Courier New', monospace; }
 
+/* Sub-row under name */
+.pcc-sub-row { display: flex; align-items: center; gap: 0.4rem; margin-top: 1px; }
+.pcc-games-played { font-size: 0.62rem; color: var(--muted2); font-family: 'Courier New', monospace; font-weight: 700; letter-spacing: 0.06em; }
+.pcc-streak-chip { font-size: 0.62rem; font-weight: 800; color: #FF6B35; background: rgba(255,107,53,0.12); border-radius: 99px; padding: 0 0.35rem; }
+
+/* Points section */
+.pcc-pts-section { display: flex; flex-direction: column; gap: 0.45rem; }
 .pcc-pts-row { display: flex; align-items: baseline; gap: 0.4rem; }
 .pcc-pts-big {
   font-size: 2.6rem; font-weight: 900; letter-spacing: -0.02em; line-height: 1;
@@ -420,13 +427,64 @@ body {
 }
 .pcc-pts-lbl { font-size: 0.62rem; font-weight: 900; letter-spacing: 0.18em; color: var(--arc-cyan); text-transform: uppercase; font-family: 'Courier New', monospace; opacity: 0.75; }
 
-.pcc-breakdown { display: flex; justify-content: space-around; background: var(--surface); border-radius: var(--radius-sm); padding: 0.5rem; }
-.pcc-breakdown-cell { display: flex; flex-direction: column; align-items: center; gap: 0.1rem; }
+/* Points split bar */
+.pcc-pts-split { display: flex; flex-direction: column; gap: 0.3rem; }
+.pcc-pts-split-bar {
+  height: 6px; border-radius: 99px; overflow: hidden;
+  background: rgba(255,255,255,0.06); display: flex;
+}
+.pcc-split-comp { height: 100%; border-radius: 99px 0 0 99px; transition: width 1s ease; }
+.pcc-split-ach  { height: 100%; border-radius: 0 99px 99px 0; background: #FFD700; box-shadow: 0 0 6px rgba(255,215,0,0.5); transition: width 1s ease; }
+.pcc-pts-split-labels {
+  display: flex; justify-content: space-between;
+  font-size: 0.62rem; font-family: 'Courier New', monospace; font-weight: 700; color: var(--muted2);
+}
+.pcc-split-num { font-size: 0.75rem; font-weight: 900; }
+.pcc-split-tag { font-size: 0.58rem; letter-spacing: 0.08em; opacity: 0.7; }
 
+/* Section dividers */
+.pcc-divider {
+  display: flex; align-items: center; gap: 0.5rem;
+  border: none; margin: 0;
+}
+.pcc-divider::before, .pcc-divider::after {
+  content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.06);
+}
+.pcc-divider span {
+  font-size: 0.52rem; font-weight: 900; letter-spacing: 0.14em;
+  color: rgba(255,255,255,0.2); font-family: 'Courier New', monospace;
+  white-space: nowrap; text-transform: uppercase;
+}
+
+/* Placement list with mini bars */
+.pcc-placement-list { display: flex; flex-direction: column; gap: 0.28rem; }
+.pcc-place-row {
+  display: grid; grid-template-columns: 18px 36px 1fr 22px;
+  align-items: center; gap: 0.4rem;
+}
+.pcc-place-icon { font-size: 0.85rem; text-align: center; }
+.pcc-place-lbl { font-size: 0.57rem; font-weight: 900; letter-spacing: 0.1em; color: var(--muted2); font-family: 'Courier New', monospace; }
+.pcc-place-track { height: 5px; background: rgba(255,255,255,0.06); border-radius: 99px; overflow: hidden; }
+.pcc-place-fill  { height: 100%; border-radius: 99px; transition: width 1.2s cubic-bezier(0.34,1.56,0.64,1); min-width: 2px; }
+.pcc-place-val { font-size: 0.78rem; font-weight: 900; font-family: 'Courier New', monospace; text-align: right; }
+
+/* Rings row */
 .pcc-rings-row { display: flex; justify-content: space-around; }
 .pcc-ring-cell { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; }
 .pcc-ring-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 800; }
 .pcc-ring-lbl { font-size: 0.56rem; font-weight: 900; letter-spacing: 0.14em; color: rgba(0,229,255,0.6); text-transform: uppercase; font-family: 'Courier New', monospace; }
+
+/* Favourite game box (replaces streak cell in rings row) */
+.pcc-fav-game-box {
+  width: 52px; height: 52px; border-radius: 8px;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+  display: flex; align-items: center; justify-content: center; padding: 0.2rem;
+}
+.pcc-fav-game-text {
+  font-size: 0.6rem; font-weight: 800; font-family: 'Courier New', monospace;
+  color: rgba(255,255,255,0.55); text-align: center; line-height: 1.2;
+  word-break: break-word; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
 
 .pcc-form-row { display: flex; gap: 0.25rem; flex-wrap: wrap; }
 .pcc-badges { display: flex; gap: 0.3rem; flex-wrap: wrap; }
@@ -1068,6 +1126,65 @@ body {
 .game-node:hover::after { opacity: 0.5; }
 .neural-map.dragging .game-node::after { opacity: 0; }
 
+/* Multi-earner list inside ach node */
+.nn-earners-list { display: flex; flex-direction: column; gap: 1px; }
+.nn-earners-list .nn-earner { font-size: 0.62rem; }
+
+/* Drop confirmation modal */
+.drop-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(0,0,0,0.65); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+}
+.drop-modal {
+  background: #0e1420;
+  border: 1px solid rgba(0,229,255,0.3);
+  border-radius: 12px;
+  padding: 1.5rem 2rem;
+  max-width: 340px; width: 90%;
+  display: flex; flex-direction: column; align-items: center; gap: 0.9rem;
+  box-shadow: 0 0 40px rgba(0,229,255,0.12), 0 20px 60px rgba(0,0,0,0.5);
+  animation: drop-modal-in 0.18s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes drop-modal-in {
+  from { transform: scale(0.88); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
+}
+.drop-modal-icon { font-size: 2rem; }
+.drop-modal-title {
+  font-family: 'Courier New', monospace; font-size: 0.72rem;
+  font-weight: 900; letter-spacing: 0.18em; color: rgba(0,229,255,0.8);
+}
+.drop-modal-body {
+  display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;
+  justify-content: center; text-align: center;
+}
+.drop-modal-from, .drop-modal-to {
+  font-size: 0.92rem; font-weight: 800;
+  font-family: 'Courier New', monospace;
+  color: rgba(255,255,255,0.9);
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px; padding: 0.25rem 0.6rem;
+}
+.drop-modal-to { color: #FFD700; border-color: rgba(255,215,0,0.3); background: rgba(255,215,0,0.06); }
+.drop-modal-arrow { color: rgba(0,229,255,0.6); font-size: 1rem; font-weight: 900; }
+.drop-modal-actions { display: flex; gap: 0.6rem; width: 100%; margin-top: 0.25rem; }
+.drop-btn {
+  flex: 1; padding: 0.5rem; border-radius: 8px; font-size: 0.75rem;
+  font-weight: 900; letter-spacing: 0.1em; font-family: 'Courier New', monospace;
+  cursor: pointer; border: 1px solid; transition: all 0.15s;
+}
+.drop-btn.cancel {
+  background: transparent; border-color: rgba(255,255,255,0.15); color: var(--muted);
+}
+.drop-btn.cancel:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.3); }
+.drop-btn.confirm {
+  background: rgba(0,229,255,0.12); border-color: rgba(0,229,255,0.5); color: var(--arc-cyan);
+  box-shadow: 0 0 12px rgba(0,229,255,0.1);
+}
+.drop-btn.confirm:hover { background: rgba(0,229,255,0.22); box-shadow: 0 0 18px rgba(0,229,255,0.2); }
+
 /* Player node */
 .player-node {
   border-color: rgba(255,255,255,0.1);
@@ -1090,14 +1207,147 @@ body {
   .neural-col-players { display: none; }
 }
 
-/* Mobile: single column, hide all SVG */
-@media (max-width: 650px) {
-  .neural-map { grid-template-columns: 1fr; }
-  .neural-col-games { grid-column: 1; }
-  .neural-gap       { display: none; }
-  .neural-col-achs  { grid-column: 1; }
-  .neural-svg       { display: none; }
-  .nn-connector     { display: none; }
+/* Mobile: hide matrix, show accordion */
+@media (max-width: 700px) {
+  .neural-map         { display: none !important; }
+  .neural-map-mobile  { display: block; }
+}
+
+/* Description line in matrix ach nodes */
+.nn-desc {
+  font-size: 0.54rem;
+  color: rgba(0,229,255,0.38);
+  line-height: 1.25;
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  letter-spacing: 0.01em;
+  font-style: italic;
+}
+
+/* ── Mobile accordion ── */
+.neural-map-mobile {
+  display: none;
+  margin: 1rem;
+  border: 1px solid rgba(0,229,255,0.18);
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(0,229,255,0.03);
+}
+.nmm-header {
+  padding: 0.65rem 1rem;
+  font-family: 'Courier New', monospace;
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.15em;
+  color: var(--arc-cyan);
+  text-shadow: 0 0 8px rgba(0,229,255,0.5);
+  border-bottom: 1px solid rgba(0,229,255,0.12);
+  background: rgba(0,229,255,0.04);
+}
+.nmm-empty {
+  padding: 1rem;
+  font-size: 0.75rem;
+  color: var(--muted2);
+  text-align: center;
+}
+.nmm-section {
+  border-bottom: 1px solid rgba(0,229,255,0.08);
+}
+.nmm-section:last-child { border-bottom: none; }
+.nmm-section-hd {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.85rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+}
+.nmm-section-hd:hover { background: rgba(0,229,255,0.05); }
+.nmm-section-label {
+  flex: 1;
+  font-family: 'Courier New', monospace;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  color: rgba(255,255,255,0.85);
+}
+.nmm-section-meta {
+  font-family: 'Courier New', monospace;
+  font-size: 0.6rem;
+  color: var(--muted2);
+  letter-spacing: 0.05em;
+}
+.nmm-chevron {
+  font-size: 0.55rem;
+  color: rgba(0,229,255,0.5);
+  width: 12px;
+  text-align: center;
+}
+.nmm-ach-list {
+  border-top: 1px solid rgba(0,229,255,0.06);
+}
+.nmm-ach-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.55rem 0.85rem 0.55rem 1.2rem;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  transition: background 0.15s;
+}
+.nmm-ach-row:last-child { border-bottom: none; }
+.nmm-ach-row.claimed {
+  background: linear-gradient(90deg, rgba(var(--earner-color, 255,215,0), 0.06) 0%, transparent 100%);
+}
+.nmm-ach-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.nmm-ach-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.nmm-ach-name {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: rgba(255,255,255,0.9);
+  line-height: 1.2;
+}
+.nmm-ach-desc {
+  font-size: 0.72rem;
+  color: rgba(255,255,255,0.5);
+  line-height: 1.35;
+  font-style: italic;
+}
+.nmm-ach-earner {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin-top: 2px;
+}
+.nmm-ach-earner.unclaimed {
+  color: var(--muted2);
+  font-style: italic;
+  font-weight: 400;
+}
+.nmm-ach-pts {
+  font-family: 'Courier New', monospace;
+  font-size: 0.72rem;
+  font-weight: 900;
+  color: #FFD700;
+  flex-shrink: 0;
+  align-self: center;
+  letter-spacing: 0.03em;
 }
 
 /* ── Dashboard schedule & achievements panels (legacy, kept for any reuse) ── */
@@ -1371,7 +1621,6 @@ body {
 .drh-status { font-size: 0.68rem; font-weight: 900; letter-spacing: 0.16em; text-transform: uppercase; font-family: 'Courier New', monospace; text-shadow: 0 0 8px currentColor; }
 
 /* ── Player card ach row ───────────────────────── */
-.pcc-pts-breakdown { display: flex; gap: 0.4rem; align-items: center; font-size: 0.72rem; font-weight: 700; justify-content: center; margin-bottom: 0.35rem; }
 .pcc-ach-row { display: flex; gap: 0.3rem; flex-wrap: wrap; padding: 0.35rem 0; }
 
 /* ── Room detail code display ──────────────────── */
