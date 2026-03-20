@@ -40,7 +40,20 @@ body {
 ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 99px; }
 
 /* ── App layout ─────────────────────────── */
-.app { max-width: 1100px; margin: 0 auto; padding: 0 1rem 6rem; }
+.app { padding: 0 1.5rem 6rem; }
+
+@media (min-width: 1400px) {
+  .app { padding: 0 2.5rem 6rem; }
+}
+@media (min-width: 1800px) {
+  .app { padding: 0 3.5rem 6rem; }
+  .player-cards-grid { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+  .neural-map { grid-template-columns: 1fr 80px 1.2fr 80px 0.9fr; }
+}
+@media (min-width: 2400px) {
+  .app { padding: 0 5rem 6rem; }
+  .player-cards-grid { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+}
 
 /* ── Nav ────────────────────────────────── */
 .nav { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 0 1.5rem; border-bottom: 1px solid var(--border); margin-bottom: 2rem; }
@@ -933,7 +946,7 @@ body {
 }
 
 /* Columns */
-.neural-col { display: flex; flex-direction: column; gap: 0.35rem; position: relative; z-index: 1; }
+.neural-col { display: flex; flex-direction: column; gap: 0.35rem; position: relative; z-index: 1; min-width: 0; }
 .neural-col-games   { grid-column: 1; }
 .neural-gap         { grid-column: 2; }
 .neural-col-achs    { grid-column: 3; }
@@ -956,6 +969,7 @@ body {
   background: var(--surface);
   transition: border-color 0.2s, background 0.2s;
   font-size: 0.82rem;
+  min-width: 0;
 }
 .game-node.done    { border-color: rgba(67,233,123,0.2); opacity: 0.72; }
 .game-node.pending { border-color: rgba(0,229,255,0.15); }
@@ -971,6 +985,112 @@ body {
 }
 .ach-node.free     { border-style: dashed; border-color: rgba(255,255,255,0.1); opacity: 0.82; }
 .ach-node:hover    { border-color: rgba(255,215,0,0.3); background: rgba(255,215,0,0.03); }
+
+/* ── Achievement tier badge ── */
+.nn-tier-badge {
+  position: absolute; top: 4px; right: 8px;
+  font-size: 0.46rem; font-weight: 900; letter-spacing: 0.18em;
+  font-family: 'Courier New', monospace; text-transform: uppercase;
+  color: var(--tier-color, rgba(0,229,255,0.7));
+  opacity: 0.8; line-height: 1;
+  pointer-events: none;
+}
+
+/* ── Tier: standard (1pt) — clean base ── */
+.ach-node.tier-standard {
+  border-color: rgba(0,194,255,0.18);
+}
+
+/* ── Tier: rare (2pt) — silver shimmer ── */
+.ach-node.tier-rare {
+  border-color: rgba(192,200,216,0.35);
+  background: rgba(192,200,216,0.03);
+}
+.ach-node.tier-rare .nn-icon  { font-size: 1.1rem; }
+.ach-node.tier-rare .nn-pts   { font-size: 0.78rem; }
+.ach-node.tier-rare:not(.claimed) { animation: rare-pulse 3s ease-in-out infinite; }
+@keyframes rare-pulse {
+  0%,100% { border-color: rgba(192,200,216,0.25); box-shadow: none; }
+  50%      { border-color: rgba(192,200,216,0.55); box-shadow: 0 0 10px rgba(192,200,216,0.08); }
+}
+
+/* ── Tier: legendary (3pt) — purple arcane ── */
+.ach-node.tier-legendary {
+  border-color: rgba(157,80,255,0.45);
+  background: rgba(157,80,255,0.05);
+  border-width: 1.5px;
+  padding: 0.48rem 0.75rem;
+}
+.ach-node.tier-legendary .nn-icon { font-size: 1.2rem; }
+.ach-node.tier-legendary .nn-pts  { font-size: 0.85rem; }
+.ach-node.tier-legendary .nn-name { font-size: 0.86rem; font-weight: 800; }
+.ach-node.tier-legendary:not(.claimed) { animation: legendary-pulse 2.2s ease-in-out infinite; }
+@keyframes legendary-pulse {
+  0%,100% { border-color: rgba(157,80,255,0.35); box-shadow: none; }
+  50%      { border-color: rgba(157,80,255,0.75); box-shadow: 0 0 18px rgba(157,80,255,0.18), inset 0 0 12px rgba(157,80,255,0.04); }
+}
+/* Sweeping shimmer */
+.ach-node.tier-legendary::before {
+  content: '';
+  position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 0;
+  background: linear-gradient(105deg, transparent 30%, rgba(157,80,255,0.08) 50%, transparent 70%);
+  background-size: 200% 100%;
+  animation: shimmer-sweep 3s ease-in-out infinite;
+}
+@keyframes shimmer-sweep {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -100% 0; }
+}
+
+/* ── Tier: mythical (4pt+) — gold divine ── */
+.ach-node.tier-mythical {
+  border-color: rgba(255,215,0,0.6);
+  background: rgba(255,215,0,0.07);
+  border-width: 2px;
+  padding: 0.52rem 0.8rem;
+}
+.ach-node.tier-mythical .nn-icon { font-size: 1.35rem; }
+.ach-node.tier-mythical .nn-pts  { font-size: 0.95rem; font-weight: 900; }
+.ach-node.tier-mythical .nn-name { font-size: 0.88rem; font-weight: 900; letter-spacing: 0.01em; }
+.ach-node.tier-mythical .nn-tier-badge { letter-spacing: 0.22em; opacity: 1; }
+.ach-node.tier-mythical:not(.claimed) { animation: mythical-glow 1.8s ease-in-out infinite; }
+@keyframes mythical-glow {
+  0%,100% { border-color: rgba(255,215,0,0.45); box-shadow: 0 0 12px rgba(255,215,0,0.1); }
+  50%      { border-color: rgba(255,215,0,0.95); box-shadow: 0 0 28px rgba(255,215,0,0.3), 0 0 55px rgba(255,215,0,0.08), inset 0 0 18px rgba(255,215,0,0.06); }
+}
+/* Gold shimmer sweep */
+.ach-node.tier-mythical::before {
+  content: '';
+  position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 0;
+  background: linear-gradient(105deg, transparent 20%, rgba(255,215,0,0.1) 45%, rgba(255,230,100,0.15) 50%, rgba(255,215,0,0.1) 55%, transparent 80%);
+  background-size: 200% 100%;
+  animation: shimmer-sweep 2s ease-in-out infinite;
+}
+/* Corner crown decoration */
+.ach-node.tier-mythical::after {
+  content: '✦';
+  position: absolute; top: 3px; right: 6px;
+  font-size: 0.5rem; color: #FFD700;
+  opacity: 0.6; pointer-events: none; z-index: 1;
+  animation: crown-pulse 1.8s ease-in-out infinite;
+}
+@keyframes crown-pulse { 0%,100% { opacity: 0.4; } 50% { opacity: 1; } }
+
+/* Mythical claimed still keeps the gold drama */
+.ach-node.tier-mythical.claimed { animation: mythical-claimed 2s ease-in-out infinite; }
+@keyframes mythical-claimed {
+  0%,100% { border-color: rgba(255,215,0,0.55); box-shadow: 0 0 16px rgba(255,215,0,0.15); }
+  50%      { border-color: #FFD700;               box-shadow: 0 0 32px rgba(255,215,0,0.35), inset 0 0 16px rgba(255,215,0,0.06); }
+}
+
+/* ── Tier: penalty (negative pts) ── */
+.ach-node.tier-penalty {
+  border-color: rgba(255,64,64,0.3);
+  background: rgba(255,64,64,0.03);
+  opacity: 0.85;
+}
+.ach-node.tier-penalty .nn-pts { color: #FF6B8A !important; }
+.ach-node.tier-penalty .nn-tier-badge { color: rgba(255,100,100,0.8); }
 
 /* Connector dots on node edges */
 .nn-connector {
@@ -1006,8 +1126,12 @@ body {
 .nn-status      { font-size: 0.7rem; flex-shrink: 0; }
 .nn-status.done { color: #43E97B; text-shadow: 0 0 5px rgba(67,233,123,0.6); }
 .nn-icon { font-size: 1.05rem; flex-shrink: 0; line-height: 1; }
-.nn-ach-text { flex: 1; min-width: 0; }
-.nn-earner { font-size: 0.62rem; font-weight: 600; }
+.nn-ach-text { flex: 1; min-width: 0; overflow: hidden; }
+.nn-earner {
+  font-size: 0.62rem; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 100%;
+}
 .nn-unclaimed { color: var(--muted-fg); }
 .nn-pts {
   font-family: 'Courier New', monospace; font-size: 0.72rem; font-weight: 900;
@@ -1127,8 +1251,70 @@ body {
 .neural-map.dragging .game-node::after { opacity: 0; }
 
 /* Multi-earner list inside ach node */
-.nn-earners-list { display: flex; flex-direction: column; gap: 1px; }
-.nn-earners-list .nn-earner { font-size: 0.62rem; }
+.nn-earners-list { display: flex; flex-direction: column; gap: 1px; overflow: hidden; }
+.nn-earners-list .nn-earner { font-size: 0.62rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ── Achievement hover tooltip ── */
+.nn-ach-tooltip {
+  position: fixed;
+  z-index: 9998;
+  max-width: 280px;
+  min-width: 180px;
+  background: #0b1120;
+  border: 1px solid var(--tier-color, rgba(0,229,255,0.4));
+  border-radius: 10px;
+  padding: 0.75rem 0.9rem;
+  pointer-events: none;
+  display: flex; flex-direction: column; gap: 0.5rem;
+  box-shadow: 0 0 30px color-mix(in srgb, var(--tier-color, rgba(0,229,255,1)) 20%, transparent),
+              0 16px 40px rgba(0,0,0,0.6);
+  animation: tooltip-in 0.12s ease-out;
+}
+@keyframes tooltip-in {
+  from { opacity: 0; transform: translateY(4px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)   scale(1); }
+}
+.nn-tooltip-header {
+  display: flex; align-items: flex-start; gap: 0.5rem;
+}
+.nn-tooltip-icon { font-size: 1.4rem; flex-shrink: 0; line-height: 1; margin-top: 1px; }
+.nn-tooltip-title { flex: 1; min-width: 0; }
+.nn-tooltip-name {
+  font-size: 0.82rem; font-weight: 800;
+  color: rgba(255,255,255,0.95);
+  line-height: 1.2;
+}
+.nn-tooltip-tier-label {
+  font-size: 0.5rem; font-weight: 900; letter-spacing: 0.2em;
+  font-family: 'Courier New', monospace; text-transform: uppercase;
+  margin-top: 2px; opacity: 0.9;
+}
+.nn-tooltip-pts {
+  font-family: 'Courier New', monospace;
+  font-size: 1.1rem; font-weight: 900;
+  flex-shrink: 0; line-height: 1;
+}
+.nn-tooltip-desc {
+  font-size: 0.76rem;
+  color: rgba(255,255,255,0.72);
+  line-height: 1.45;
+  border-top: 1px solid rgba(255,255,255,0.07);
+  padding-top: 0.45rem;
+}
+.nn-tooltip-earners {
+  display: flex; flex-direction: column; gap: 2px;
+  border-top: 1px solid rgba(255,255,255,0.07);
+  padding-top: 0.4rem;
+}
+.nn-tooltip-earner {
+  font-size: 0.68rem; font-weight: 700;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* Tier-specific tooltip border glow */
+.nn-ach-tooltip.tier-rare      { box-shadow: 0 0 20px rgba(192,200,216,0.15), 0 16px 40px rgba(0,0,0,0.6); }
+.nn-ach-tooltip.tier-legendary { box-shadow: 0 0 28px rgba(157,80,255,0.25),  0 16px 40px rgba(0,0,0,0.6); }
+.nn-ach-tooltip.tier-mythical  { box-shadow: 0 0 36px rgba(255,215,0,0.3),    0 16px 40px rgba(0,0,0,0.6); }
 
 /* Drop confirmation modal */
 .drop-overlay {
@@ -1215,17 +1401,34 @@ body {
 
 /* Description line in matrix ach nodes */
 .nn-desc {
-  font-size: 0.54rem;
-  color: rgba(0,229,255,0.38);
-  line-height: 1.25;
-  margin-top: 1px;
+  font-size: 0.62rem;
+  color: rgba(255,255,255,0.5);
+  line-height: 1.3;
+  margin-top: 2px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 100%;
-  letter-spacing: 0.01em;
-  font-style: italic;
+  letter-spacing: 0em;
 }
+
+/* Player node rank badge + stat row */
+.nn-player-rank {
+  font-size: 0.9rem;
+  flex-shrink: 0;
+  min-width: 1.5rem;
+  text-align: center;
+  line-height: 1;
+}
+.nn-player-stats {
+  display: flex; align-items: center; gap: 0.3rem;
+  font-size: 0.6rem; font-weight: 700;
+  color: var(--muted2);
+  font-family: 'Courier New', monospace;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.nn-player-stat-sep { opacity: 0.4; }
 
 /* ── Mobile accordion ── */
 .neural-map-mobile {
@@ -1655,6 +1858,40 @@ body {
 .code-error { color: #FF4040; font-size: 0.78rem; font-weight: 700; margin-top: 0.6rem; }
 .modal-actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1.25rem; }
 .modal-body { text-align: left; margin-bottom: 0.5rem; }
+
+/* ── Auto-refresh button ── */
+.autorefresh-btn {
+  display: flex; align-items: center; gap: 0.55rem;
+  padding: 0.6rem 1rem;
+  background: transparent;
+  border: 1px solid rgba(0,229,255,0.2);
+  border-radius: 10px;
+  color: var(--muted);
+  font-family: 'Courier New', monospace;
+  font-size: 0.62rem; font-weight: 900; letter-spacing: 0.1em;
+  cursor: pointer; white-space: pre-line; text-align: left;
+  transition: all 0.18s;
+}
+.autorefresh-btn:hover {
+  border-color: rgba(0,229,255,0.5);
+  color: var(--arc-cyan);
+  box-shadow: 0 0 14px rgba(0,229,255,0.1);
+}
+.autorefresh-btn.active {
+  border-color: #43E97B;
+  color: #43E97B;
+  background: rgba(67,233,123,0.06);
+  box-shadow: 0 0 18px rgba(67,233,123,0.15);
+  animation: arb-pulse 2s ease-in-out infinite;
+}
+@keyframes arb-pulse {
+  0%, 100% { box-shadow: 0 0 10px rgba(67,233,123,0.1); }
+  50%       { box-shadow: 0 0 22px rgba(67,233,123,0.3); }
+}
+.arb-icon { font-size: 1.3rem; line-height: 1; }
+.autorefresh-btn.active .arb-icon { animation: spin 2s linear infinite; }
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.arb-text { text-align: left; line-height: 1.4; }
 
 /* ── Results trigger button ── */
 .btn-results-trigger {

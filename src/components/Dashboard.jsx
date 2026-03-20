@@ -1074,6 +1074,23 @@ function NeuralMapMobile({ roomGames, achievements, stats }) {
   )
 }
 
+// ── Achievement tier classifier ───────────────────────────────────────────────
+function achTier(pts) {
+  if (pts < 0)  return 'penalty'
+  if (pts >= 4) return 'mythical'
+  if (pts === 3) return 'legendary'
+  if (pts === 2) return 'rare'
+  return 'standard'
+}
+
+const TIER_META = {
+  standard:  { label: 'STANDARD',  color: '#00C2FF', glow: 'rgba(0,194,255,0.5)' },
+  rare:      { label: 'RARE',      color: '#C0C8D8', glow: 'rgba(192,200,216,0.6)' },
+  legendary: { label: 'LEGENDARY', color: '#C77DFF', glow: 'rgba(157,80,255,0.7)' },
+  mythical:  { label: 'MYTHICAL',  color: '#FFD700', glow: 'rgba(255,215,0,0.9)' },
+  penalty:   { label: 'PENALTY',   color: '#FF4040', glow: 'rgba(255,64,64,0.6)' },
+}
+
 // ── Neural Connection Map (Games × Achievements) ──────────────────────────────
 function NeuralConnectionMap({ roomGames, games, achievements, stats, onLinkChange }) {
   const containerRef   = useRef(null)
@@ -1089,6 +1106,7 @@ function NeuralConnectionMap({ roomGames, games, achievements, stats, onLinkChan
   const [dropTarget,  setDropTarget]  = useState(null)
   const [pendingDrop, setPendingDrop] = useState(null)  // awaiting confirmation
   const [saving,      setSaving]      = useState(false)
+  const [tooltip,     setTooltip]     = useState(null)  // { ach, x, y }
   const dropTargetRef = useRef(null)
 
   const playerMap  = Object.fromEntries(stats.map(p => [p.id, p]))
@@ -1264,6 +1282,35 @@ function NeuralConnectionMap({ roomGames, games, achievements, stats, onLinkChan
   return (
     <>
     {pendingDrop && <DropConfirmModal pending={pendingDrop} onConfirm={confirmDrop} onCancel={cancelDrop} />}
+    {tooltip && (() => {
+      const tier = achTier(tooltip.ach.pointValue)
+      const meta = TIER_META[tier]
+      return (
+        <div className={`nn-ach-tooltip tier-${tier}`}
+          style={{ left: Math.min(tooltip.x + 16, window.innerWidth - 300), top: Math.max(tooltip.y - 8, 8), '--tier-color': meta.color, '--tier-glow': meta.glow }}>
+          <div className="nn-tooltip-header">
+            <span className="nn-tooltip-icon">{tooltip.ach.icon}</span>
+            <div className="nn-tooltip-title">
+              <div className="nn-tooltip-name">{tooltip.ach.name}</div>
+              <div className="nn-tooltip-tier-label" style={{ color: meta.color }}>{meta.label}</div>
+            </div>
+            <span className="nn-tooltip-pts" style={{ color: meta.color, textShadow: `0 0 8px ${meta.glow}` }}>
+              {tooltip.ach.pointValue > 0 ? '+' : ''}{tooltip.ach.pointValue}
+            </span>
+          </div>
+          {tooltip.ach.description && (
+            <div className="nn-tooltip-desc">{tooltip.ach.description}</div>
+          )}
+          {tooltip.earners.length > 0 && (
+            <div className="nn-tooltip-earners">
+              {tooltip.earners.map(p => (
+                <span key={p.id} className="nn-tooltip-earner" style={{ color: p.color }}>🏅 {p.name}</span>
+              ))}
+            </div>
+          )}
+        </div>
+      )
+    })()}
     <NeuralMapMobile roomGames={roomGames} achievements={achievements} stats={stats} />
     <div className={`neural-map${drag ? ' dragging' : ''}${saving ? ' saving' : ''}`} ref={containerRef}>
       {/* HUD corner brackets */}
@@ -1466,10 +1513,15 @@ function NeuralConnectionMap({ roomGames, games, achievements, stats, onLinkChan
               const firstEarner = earners[0] ?? null
               const isFree      = !a.roomGameId
               const canAward    = !a.awardedOnce || earners.length === 0
+              const tier        = achTier(a.pointValue)
+              const tierMeta    = TIER_META[tier]
               return (
                 <div key={a.id} ref={el => achNodeRefs.current[a.id] = el}
-                  className={`neural-node ach-node ${earners.length ? 'claimed' : ''} ${isFree ? 'free' : ''} ${drag?.type === 'game' ? 'droppable' : ''} ${drag?.type === 'game' && dropTarget === a.id ? 'drop-target' : ''}`}
-                  style={firstEarner ? { '--earner-color': firstEarner.color } : undefined}>
+                  className={`neural-node ach-node tier-${tier} ${earners.length ? 'claimed' : ''} ${isFree ? 'free' : ''} ${drag?.type === 'game' ? 'droppable' : ''} ${drag?.type === 'game' && dropTarget === a.id ? 'drop-target' : ''}`}
+                  style={{ '--tier-color': tierMeta.color, '--tier-glow': tierMeta.glow, ...(firstEarner ? { '--earner-color': firstEarner.color } : {}) }}
+                  onMouseEnter={e => setTooltip({ ach: a, earners, x: e.clientX, y: e.clientY })}
+                  onMouseMove={e => setTooltip(t => t ? { ...t, x: e.clientX, y: e.clientY } : null)}
+                  onMouseLeave={() => setTooltip(null)}>
                   {!isFree && <div className={`nn-connector left ${earners.length ? 'claimed' : 'active'}`} />}
                   {!isFree && !drag && (
                     <button className="nn-unlink-btn" title="Remove game link"
@@ -1478,7 +1530,7 @@ function NeuralConnectionMap({ roomGames, games, achievements, stats, onLinkChan
                   <span className="nn-icon">{a.icon}</span>
                   <div className="nn-ach-text">
                     <div className="nn-name">{a.name}</div>
-                    {a.description && <div className="nn-desc">{a.description}</div>}
+                    <div className="nn-tier-badge">{tierMeta.label}</div>
                     {earners.length > 0
                       ? <div className="nn-earners-list">
                           {earners.map(e => (
@@ -1487,11 +1539,11 @@ function NeuralConnectionMap({ roomGames, games, achievements, stats, onLinkChan
                         </div>
                       : <div className="nn-earner nn-unclaimed">unclaimed</div>}
                   </div>
-                  <span className="nn-pts" style={a.pointValue < 0 ? { color: '#FF6B8A' } : undefined}>
+                  <span className="nn-pts" style={a.pointValue < 0 ? { color: '#FF6B8A' } : { color: tierMeta.color, textShadow: `0 0 8px ${tierMeta.glow}` }}>
                     {a.pointValue > 0 ? '+' : ''}{a.pointValue}
                   </span>
                   {canAward && (
-                    <div className={`nn-connector right ach-drag-handle`}
+                    <div className="nn-connector right ach-drag-handle"
                       onPointerDown={e => { e.stopPropagation(); startAchDrag(e, a.id) }}
                       style={{ cursor: 'grab', touchAction: 'none' }}
                       title="Drag to award to a player" />
@@ -1519,27 +1571,38 @@ function NeuralConnectionMap({ roomGames, games, achievements, stats, onLinkChan
         {achPlayers.length === 0 ? (
           <div className="neural-empty" style={{ fontSize: '0.6rem' }}>NO PLAYERS</div>
         ) : (
-          achPlayers.map(p => (
-            <div key={p.id} ref={el => playerNodeRefs.current[p.id] = el}
-              className={`neural-node player-node ${drag?.type === 'ach' ? 'droppable' : ''} ${drag?.type === 'ach' && dropTarget === p.id ? 'drop-target' : ''}`}>
-              <div className="nn-connector left" style={{ borderColor: p.color, boxShadow: `0 0 6px ${p.color}bb` }} />
-              <div className="nn-player-avatar" style={{ background: p.color + '22', color: p.color, borderColor: p.color + '55' }}>
-                {initials(p.name)}
-              </div>
-              <div className="nn-ach-text">
-                <div className="nn-name">{p.name}</div>
-                <div className="nn-earner" style={{ color: p.color }}>
-                  {p.earnedAchs.length} ach · +{p.achPts}pts
+          achPlayers.map(p => {
+            const overallRank = stats.findIndex(s => s.id === p.id)
+            const rankLabel   = overallRank === 0 ? '🥇' : overallRank === 1 ? '🥈' : overallRank === 2 ? '🥉' : `#${overallRank + 1}`
+            const shortName   = p.name.split(',')[0].trim()
+            return (
+              <div key={p.id} ref={el => playerNodeRefs.current[p.id] = el}
+                className={`neural-node player-node ${drag?.type === 'ach' ? 'droppable' : ''} ${drag?.type === 'ach' && dropTarget === p.id ? 'drop-target' : ''}`}
+                title={p.name}>
+                <div className="nn-connector left" style={{ borderColor: p.color, boxShadow: `0 0 6px ${p.color}bb` }} />
+                <span className="nn-player-rank">{rankLabel}</span>
+                <div className="nn-player-avatar" style={{ background: p.color + '22', color: p.color, borderColor: p.color + '55' }}>
+                  {initials(p.name)}
+                </div>
+                <div className="nn-ach-text">
+                  <div className="nn-name">{shortName}</div>
+                  <div className="nn-player-stats">
+                    <span style={{ color: p.color, fontWeight: 800 }}>{p.points}pts</span>
+                    <span className="nn-player-stat-sep">·</span>
+                    <span>{p.earnedAchs.length} ach</span>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))
+            )
+          })
         )}
       </div>
     </div>
     </>
   )
 }
+
+const AUTOREFRESH_KEY = 'mc_autorefresh'
 
 // ── Main export ───────────────────────────────────────────────────────────────
 export default function Dashboard({ onRoomOpen }) {
@@ -1550,6 +1613,8 @@ export default function Dashboard({ onRoomOpen }) {
   const [roomGames, setRoomGames]       = useState([])
   const [achievements, setAchievements] = useState([])
   const [showResults, setShowResults]   = useState(false)
+  const [autoRefresh, setAutoRefresh]   = useState(() => localStorage.getItem(AUTOREFRESH_KEY) === 'true')
+  const [refreshTick, setRefreshTick]   = useState(0)  // counts down visually
 
   function selectRoom(id) {
     setSelectedRoomId(id)
@@ -1589,6 +1654,35 @@ export default function Dashboard({ onRoomOpen }) {
 
   useEffect(() => { refresh() }, [])
   useEffect(() => { refreshRoomData(selectedRoomId) }, [selectedRoomId])
+
+  // ── Auto-refresh ─────────────────────────────────────────────────────────
+  const selectedRoomIdRef = useRef(selectedRoomId)
+  useEffect(() => { selectedRoomIdRef.current = selectedRoomId }, [selectedRoomId])
+
+  useEffect(() => {
+    if (!autoRefresh) return
+    setRefreshTick(30)
+    const tick = setInterval(() => {
+      setRefreshTick(t => {
+        if (t <= 1) {
+          refresh()
+          refreshRoomData(selectedRoomIdRef.current)
+          return 30
+        }
+        return t - 1
+      })
+    }, 1000)
+    return () => clearInterval(tick)
+  }, [autoRefresh])
+
+  function toggleAutoRefresh() {
+    setAutoRefresh(v => {
+      const next = !v
+      localStorage.setItem(AUTOREFRESH_KEY, String(next))
+      if (!next) setRefreshTick(0)
+      return next
+    })
+  }
 
   const selectedRoom = rooms.find(r => r.id === selectedRoomId) ?? null
   const roomPlayers  = useMemo(() => stats.map(s => ({ id: s.id, name: s.name, color: s.color })), [stats])
@@ -1632,6 +1726,13 @@ export default function Dashboard({ onRoomOpen }) {
               {STATUS_LABELS[selectedRoom.status]}
             </div>
           </div>
+          <button className={`autorefresh-btn ${autoRefresh ? 'active' : ''}`} onClick={toggleAutoRefresh}
+            title={autoRefresh ? 'Auto-refresh ON — click to disable' : 'Enable 30s auto-refresh for live display'}>
+            <span className="arb-icon">{autoRefresh ? '⟳' : '⟳'}</span>
+            <span className="arb-text">
+              {autoRefresh ? `LIVE · ${refreshTick}s` : 'AUTO\nREFRESH'}
+            </span>
+          </button>
           {stats.length > 0 && (
             <button className="btn-results-trigger" onClick={() => setShowResults(true)}>
               <span className="brt-icon">🏁</span>
