@@ -170,6 +170,83 @@ function getStatBadges(player, allStats) {
   return badges
 }
 
+// ── Standings Board ───────────────────────────────────────────────────────────
+const RANK_MEDAL = ['🥇', '🥈', '🥉']
+
+function StandingsBoard({ stats }) {
+  if (!stats || stats.length === 0) return null
+  const leader = stats[0]
+  const maxPts = Math.max(leader.totalPoints, 1)
+
+  return (
+    <div className="standings-board">
+      <div className="sb-header">
+        <span className="sb-title">STANDINGS</span>
+        <span className="sb-subtitle">CURRENT COMPETITION RANKINGS</span>
+      </div>
+      <div className="sb-rows">
+        {stats.map((p, i) => {
+          const gapToNext  = i < stats.length - 1 ? p.totalPoints - stats[i + 1].totalPoints : null
+          const gapToLeader = i > 0 ? leader.totalPoints - p.totalPoints : null
+          const compPct = maxPts > 0 ? (p.competitionPoints / maxPts) * 100 : 0
+          const achPct  = maxPts > 0 ? (p.achievementPoints  / maxPts) * 100 : 0
+          const totalPct = compPct + achPct
+
+          return (
+            <div key={p.id}>
+              <div className={`sb-row ${i === 0 ? 'sb-row-leader' : ''}`}>
+                <div className="sb-rank">
+                  {i < 3
+                    ? <span className="sb-medal">{RANK_MEDAL[i]}</span>
+                    : <span className="sb-rank-num">#{i + 1}</span>
+                  }
+                </div>
+                <div className="sb-avatar" style={{ background: p.color, boxShadow: `0 0 14px ${p.color}88` }}>
+                  {p.name.trim()[0].toUpperCase()}
+                </div>
+                <div className="sb-info">
+                  <div className="sb-name">{p.name}</div>
+                  <div className="sb-bar-wrap">
+                    <div className="sb-bar-track">
+                      <div className="sb-bar-comp" style={{ width: `${compPct}%`, background: p.color, boxShadow: `0 0 8px ${p.color}88` }} />
+                      <div className="sb-bar-ach"  style={{ width: `${achPct}%`  }} />
+                    </div>
+                    <div className="sb-bar-legend">
+                      <span style={{ color: p.color }}>{p.competitionPoints}<span className="sb-bar-tag"> comp</span></span>
+                      {p.achievementPoints > 0 && (
+                        <span style={{ color: '#FFD700' }}> + {p.achievementPoints}<span className="sb-bar-tag"> ach</span></span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className="sb-pts" style={{ color: i === 0 ? '#FFD700' : p.color, textShadow: `0 0 16px ${i === 0 ? 'rgba(255,215,0,0.7)' : p.color + '88'}` }}>
+                  {p.totalPoints}
+                  <span className="sb-pts-label">PTS</span>
+                </div>
+                <div className="sb-gap-leader">
+                  {gapToLeader !== null
+                    ? <><span className="sb-gap-icon">▲</span>{gapToLeader} behind</>
+                    : <span className="sb-gap-leader-badge">LEADER</span>
+                  }
+                </div>
+              </div>
+              {gapToNext !== null && (
+                <div className="sb-gap-row">
+                  <div className="sb-gap-line" />
+                  <div className="sb-gap-pill">
+                    {gapToNext === 0 ? 'TIED' : `${gapToNext} pt${gapToNext !== 1 ? 's' : ''} gap`}
+                  </div>
+                  <div className="sb-gap-line" />
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 // ── Activity ticker ───────────────────────────────────────────────────────────
 function ActivityTicker({ games }) {
   if (games.length === 0) return null
@@ -1483,7 +1560,10 @@ function NeuralConnectionMap({ roomGames, games, achievements, stats, onLinkChan
                   onPointerDown={e => startGameDrag(e, rg.id)}
                   style={{ touchAction: 'none', userSelect: 'none' }}>
                   <span className="nn-order">#{rg.order}</span>
-                  <span className="nn-name">{rg.name}</span>
+                  <div className="nn-game-text">
+                    <div className="nn-name">{rg.name}</div>
+                    {rg.description && <div className="nn-desc">{rg.description}</div>}
+                  </div>
                   {linked > 0 && <span className="nn-link-count">⚡{linked}</span>}
                   <span className={`nn-status ${done ? 'done' : ''}`}>{done ? '✓' : '○'}</span>
                   <div className={`nn-connector right ${linked > 0 ? 'active' : ''}`} />
@@ -1744,6 +1824,8 @@ export default function Dashboard({ onRoomOpen }) {
 
       <NeuralConnectionMap roomGames={roomGames} games={games} achievements={achievements} stats={stats}
         onLinkChange={() => refreshRoomData(selectedRoomId)} />
+
+      {stats.length > 0 && <StandingsBoard stats={stats} />}
 
       {games.length > 0 && <ActivityTicker games={games} />}
 

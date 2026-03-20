@@ -152,6 +152,171 @@ body {
 .status-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--dot-color, #43E97B); animation: pulse-dot 2s ease-in-out infinite; flex-shrink: 0; box-shadow: 0 0 6px var(--dot-color, #43E97B); }
 @keyframes pulse-dot { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:0.5; transform:scale(0.8); } }
 
+/* ── Standings Board ─────────────────────── */
+.standings-board {
+  background: linear-gradient(160deg, rgba(10,14,26,0.97) 0%, rgba(6,10,20,0.99) 100%);
+  border: 1px solid rgba(0,229,255,0.2);
+  border-radius: var(--radius);
+  padding: 1.5rem 1.75rem;
+  box-shadow: 0 0 40px rgba(0,229,255,0.06), inset 0 0 60px rgba(0,0,0,0.4);
+  margin-bottom: 1.25rem;
+}
+.sb-header {
+  display: flex; align-items: baseline; gap: 1rem;
+  border-bottom: 1px solid rgba(0,229,255,0.15);
+  padding-bottom: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+.sb-title {
+  font-family: 'Courier New', monospace;
+  font-size: 1.15rem; font-weight: 900;
+  letter-spacing: 0.25em;
+  color: var(--arc-cyan);
+  text-shadow: 0 0 16px rgba(0,229,255,0.7);
+}
+.sb-subtitle {
+  font-family: 'Courier New', monospace;
+  font-size: 0.62rem; font-weight: 700;
+  letter-spacing: 0.18em;
+  color: rgba(0,229,255,0.4);
+}
+.sb-rows { display: flex; flex-direction: column; gap: 0; }
+
+.sb-row {
+  display: grid;
+  grid-template-columns: 52px 44px 1fr auto auto;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.85rem 0.5rem;
+  border-radius: 8px;
+  transition: background 0.15s;
+  position: relative;
+}
+.sb-row:hover { background: rgba(255,255,255,0.03); }
+.sb-row-leader {
+  background: linear-gradient(90deg, rgba(255,215,0,0.06) 0%, transparent 80%);
+  border: 1px solid rgba(255,215,0,0.15);
+  border-radius: 8px;
+}
+
+.sb-rank {
+  display: flex; align-items: center; justify-content: center;
+  width: 52px;
+}
+.sb-medal { font-size: 1.6rem; line-height: 1; filter: drop-shadow(0 0 8px rgba(255,215,0,0.5)); }
+.sb-rank-num {
+  font-family: 'Courier New', monospace;
+  font-size: 1rem; font-weight: 900;
+  color: rgba(255,255,255,0.35);
+  letter-spacing: 0.05em;
+}
+.sb-avatar {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Courier New', monospace;
+  font-size: 1.1rem; font-weight: 900;
+  color: #000;
+  flex-shrink: 0;
+  border: 2px solid rgba(255,255,255,0.15);
+}
+.sb-info {
+  display: flex; flex-direction: column; gap: 0.35rem;
+  min-width: 0;
+}
+.sb-name {
+  font-family: 'Courier New', monospace;
+  font-size: 0.92rem; font-weight: 900;
+  letter-spacing: 0.1em;
+  color: rgba(255,255,255,0.9);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sb-bar-wrap { display: flex; flex-direction: column; gap: 0.25rem; }
+.sb-bar-track {
+  display: flex; height: 8px;
+  background: rgba(255,255,255,0.07);
+  border-radius: 4px;
+  overflow: hidden;
+  min-width: 80px;
+}
+.sb-bar-comp {
+  height: 100%; border-radius: 4px 0 0 4px;
+  transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  flex-shrink: 0;
+}
+.sb-bar-ach {
+  height: 100%;
+  background: linear-gradient(90deg, #FFD700, #FFA500);
+  box-shadow: 0 0 6px rgba(255,215,0,0.6);
+  transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  flex-shrink: 0;
+}
+.sb-bar-legend {
+  font-family: 'Courier New', monospace;
+  font-size: 0.6rem; font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.sb-bar-tag { opacity: 0.55; font-weight: 400; }
+
+.sb-pts {
+  font-family: 'Courier New', monospace;
+  font-size: 2rem; font-weight: 900;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  display: flex; flex-direction: column; align-items: flex-end;
+  flex-shrink: 0;
+}
+.sb-pts-label {
+  font-size: 0.52rem; font-weight: 700;
+  letter-spacing: 0.2em;
+  opacity: 0.55;
+  margin-top: 2px;
+}
+
+.sb-gap-leader {
+  font-family: 'Courier New', monospace;
+  font-size: 0.58rem; font-weight: 700;
+  letter-spacing: 0.1em;
+  color: rgba(255,255,255,0.3);
+  white-space: nowrap;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 1px;
+  flex-shrink: 0;
+}
+.sb-gap-icon { font-size: 0.5rem; opacity: 0.4; }
+.sb-gap-leader-badge {
+  font-family: 'Courier New', monospace;
+  font-size: 0.58rem; font-weight: 900;
+  letter-spacing: 0.18em;
+  color: rgba(255,215,0,0.55);
+}
+
+.sb-gap-row {
+  display: flex; align-items: center; gap: 0.75rem;
+  padding: 0.3rem 0.5rem;
+  opacity: 0.55;
+}
+.sb-gap-line { flex: 1; height: 1px; background: rgba(255,255,255,0.1); }
+.sb-gap-pill {
+  font-family: 'Courier New', monospace;
+  font-size: 0.58rem; font-weight: 700;
+  letter-spacing: 0.15em;
+  color: rgba(255,255,255,0.4);
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 20px;
+  padding: 0.15rem 0.6rem;
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .sb-row { grid-template-columns: 36px 36px 1fr auto; gap: 0.5rem; padding: 0.7rem 0.25rem; }
+  .sb-gap-leader { display: none; }
+  .sb-medal { font-size: 1.2rem; }
+  .sb-pts { font-size: 1.5rem; }
+  .sb-avatar { width: 36px; height: 36px; font-size: 0.9rem; }
+  .sb-name { font-size: 0.78rem; }
+}
+
 /* ── Activity ticker ────────────────────── */
 .ticker-wrap {
   display: flex; align-items: center; gap: 0.75rem;
@@ -1126,7 +1291,8 @@ body {
 .nn-status      { font-size: 0.7rem; flex-shrink: 0; }
 .nn-status.done { color: #43E97B; text-shadow: 0 0 5px rgba(67,233,123,0.6); }
 .nn-icon { font-size: 1.05rem; flex-shrink: 0; line-height: 1; }
-.nn-ach-text { flex: 1; min-width: 0; overflow: hidden; }
+.nn-game-text { flex: 1; min-width: 0; overflow: hidden; }
+.nn-ach-text  { flex: 1; min-width: 0; overflow: hidden; }
 .nn-earner {
   font-size: 0.62rem; font-weight: 600;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
