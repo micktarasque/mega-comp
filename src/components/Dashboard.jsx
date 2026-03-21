@@ -1551,25 +1551,27 @@ function NeuralConnectionMap({ roomGames, games, achievements, stats, onLinkChan
           <div className="neural-empty">NO EVENTS QUEUED</div>
         ) : (
           <>
-            {roomGames.map(rg => {
-              const done   = doneIds.has(rg.id)
-              const linked = linkedAchs.filter(a => a.roomGameId === rg.id).length
-              return (
-                <div key={rg.id} ref={el => gameNodeRefs.current[rg.id] = el}
-                  className={`neural-node game-node ${done ? 'done' : 'pending'} ${drag?.type === 'game' && drag.fromId === rg.id ? 'drag-source' : ''}`}
-                  onPointerDown={e => startGameDrag(e, rg.id)}
-                  style={{ touchAction: 'none', userSelect: 'none' }}>
-                  <span className="nn-order">#{rg.order}</span>
-                  <div className="nn-game-text">
-                    <div className="nn-name">{rg.name}</div>
-                    {rg.description && <div className="nn-desc">{rg.description}</div>}
+            <div className="game-nodes-list">
+              {roomGames.map(rg => {
+                const done   = doneIds.has(rg.id)
+                const linked = linkedAchs.filter(a => a.roomGameId === rg.id).length
+                return (
+                  <div key={rg.id} ref={el => gameNodeRefs.current[rg.id] = el}
+                    className={`neural-node game-node ${done ? 'done' : 'pending'} ${drag?.type === 'game' && drag.fromId === rg.id ? 'drag-source' : ''}`}
+                    onPointerDown={e => startGameDrag(e, rg.id)}
+                    style={{ touchAction: 'none', userSelect: 'none' }}>
+                    <span className="nn-order">#{rg.order}</span>
+                    <div className="nn-game-text">
+                      <div className="nn-name">{rg.name}</div>
+                      {rg.description && <div className="nn-desc">{rg.description}</div>}
+                    </div>
+                    {linked > 0 && <span className="nn-link-count">⚡{linked}</span>}
+                    <span className={`nn-status ${done ? 'done' : ''}`}>{done ? '✓' : '○'}</span>
+                    <div className={`nn-connector right ${linked > 0 ? 'active' : ''}`} />
                   </div>
-                  {linked > 0 && <span className="nn-link-count">⚡{linked}</span>}
-                  <span className={`nn-status ${done ? 'done' : ''}`}>{done ? '✓' : '○'}</span>
-                  <div className={`nn-connector right ${linked > 0 ? 'active' : ''}`} />
-                </div>
-              )
-            })}
+                )
+              })}
+            </div>
             <div className="neural-progress">
               <span className={pct === 100 ? 'neural-progress-done' : ''}>{doneCount}/{roomGames.length}</span>
               <div className="np-track"><div className="np-fill" style={{ width: `${pct}%` }} /></div>
@@ -1865,6 +1867,194 @@ export default function Dashboard({ onRoomOpen }) {
       {stats.length > 0 && <RankingsTable stats={stats} />}
 
       <RoomHistory games={games} onDelete={handleDeleteGame} />
+    </div>
+  )
+}
+
+// ── TV Slideshow View ─────────────────────────────────────────────────────────
+
+const TV_SLIDES = [
+  { id: 'standings', label: 'STANDINGS',     icon: '🏆', duration: 25 },
+  { id: 'neural',    label: 'NEURAL MATRIX', icon: '⚡', duration: 40 },
+  { id: 'spotlight', label: 'LEADER',        icon: '👑', duration: 20 },
+  { id: 'players',   label: 'PLAYERS',       icon: '🎮', duration: 28 },
+  { id: 'race',      label: 'POINTS RACE',   icon: '📊', duration: 18 },
+  { id: 'form',      label: 'FORM GUIDE',    icon: '📈', duration: 20 },
+  { id: 'h2h',       label: 'HEAD TO HEAD',  icon: '⚔️',  duration: 20 },
+]
+
+export function TVView({ onBack }) {
+  const [rooms, setRooms]                   = useState([])
+  const [selectedRoomId, setSelectedRoomId] = useState(() => localStorage.getItem(LAST_ROOM_KEY))
+  const [stats, setStats]                   = useState([])
+  const [games, setGames]                   = useState([])
+  const [roomGames, setRoomGames]           = useState([])
+  const [achievements, setAchievements]     = useState([])
+  const [slideIdx, setSlideIdx]             = useState(0)
+  const [isPlaying, setIsPlaying]           = useState(true)
+  const [tick, setTick]                     = useState(0)
+  const [slideKey, setSlideKey]             = useState(0)
+  const [clock, setClock]                   = useState('')
+
+  const isPlayingRef      = useRef(true)
+  const slideIdxRef       = useRef(0)
+  const selectedRoomIdRef = useRef(selectedRoomId)
+
+  useEffect(() => {
+    const fmt = () => new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+    setClock(fmt())
+    const id = setInterval(() => setClock(fmt()), 10000)
+    return () => clearInterval(id)
+  }, [])
+
+  useEffect(() => { getRooms().then(setRooms) }, [])
+  useEffect(() => {
+    if (!selectedRoomId) return
+    selectedRoomIdRef.current = selectedRoomId
+    localStorage.setItem(LAST_ROOM_KEY, selectedRoomId)
+    loadData(selectedRoomId)
+  }, [selectedRoomId])
+
+  async function loadData(roomId) {
+    if (!roomId) return
+    const [s, allGames, rg, achs] = await Promise.all([
+      getRoomStats(roomId),
+      getGames(),
+      getRoomGames(roomId).catch(() => []),
+      getAchievements(roomId).catch(() => []),
+    ])
+    setStats(s)
+    setGames(allGames.filter(g => g.roomId === roomId))
+    setRoomGames(rg)
+    setAchievements(achs)
+  }
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (!isPlayingRef.current) return
+      setTick(t => {
+        const dur = TV_SLIDES[slideIdxRef.current].duration
+        if (t + 1 >= dur) {
+          const next = (slideIdxRef.current + 1) % TV_SLIDES.length
+          slideIdxRef.current = next
+          setSlideIdx(next)
+          setSlideKey(k => k + 1)
+          return 0
+        }
+        return t + 1
+      })
+    }, 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  useEffect(() => {
+    const id = setInterval(() => loadData(selectedRoomIdRef.current), 60000)
+    return () => clearInterval(id)
+  }, [])
+
+  function goTo(i) {
+    slideIdxRef.current = i
+    setSlideIdx(i)
+    setSlideKey(k => k + 1)
+    setTick(0)
+  }
+
+  function togglePlay() {
+    setIsPlaying(v => { isPlayingRef.current = !v; return !v })
+  }
+
+  const selectedRoom = rooms.find(r => r.id === selectedRoomId) ?? null
+  const roomPlayers  = useMemo(() => stats.map(s => ({ id: s.id, name: s.name, color: s.color })), [stats])
+  const champion     = stats[0]
+  const slide        = TV_SLIDES[slideIdx]
+  const progressPct  = (tick / slide.duration) * 100
+  const hasData      = stats.length > 0
+
+  function renderSlide() {
+    if (!selectedRoomId) return (
+      <div className="tv-no-data">
+        <div className="tv-no-data-icon">📺</div>
+        <div className="tv-no-data-title">SELECT A ROOM</div>
+        <div className="tv-no-data-sub">Pick a competition room from the selector above to start the broadcast</div>
+      </div>
+    )
+    if (!hasData) return (
+      <div className="tv-no-data">
+        <div className="tv-no-data-icon">⏳</div>
+        <div className="tv-no-data-title">LOADING DATA</div>
+      </div>
+    )
+    switch (slide.id) {
+      case 'standings':
+        return <StandingsBoard stats={stats} />
+      case 'neural':
+        return <NeuralConnectionMap roomGames={roomGames} games={games} achievements={achievements} stats={stats} onLinkChange={() => loadData(selectedRoomId)} />
+      case 'spotlight':
+        return champion
+          ? <ChampionPanel champion={champion} runner_up={stats[1]} stats={stats} games={games} />
+          : <div className="tv-no-data"><div className="tv-no-data-title">NO RESULTS YET</div></div>
+      case 'players':
+        return <div className="tv-player-grid">{stats.map((p, i) => <PlayerCard key={p.id} player={p} rank={i} games={games} allStats={stats} />)}</div>
+      case 'race':
+        return <PointsRace stats={stats} />
+      case 'form':
+        return <FormGuide stats={stats} games={games} />
+      case 'h2h':
+        return <div className="dual-panel"><GameDominance games={games} players={roomPlayers} /><H2HMatrix players={roomPlayers} games={games} /></div>
+      default:
+        return null
+    }
+  }
+
+  return (
+    <div className="tv-view">
+      <div className="tv-topbar">
+        <button className="tv-back-btn" onClick={onBack}>← EXIT</button>
+        <div className="tv-topbar-center">
+          <select value={selectedRoomId ?? ''} onChange={e => setSelectedRoomId(e.target.value || null)} className="tv-room-select">
+            <option value="">— select room —</option>
+            {rooms.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+          </select>
+        </div>
+        <div className="tv-topbar-right">
+          {selectedRoom && <span className="tv-room-badge">{selectedRoom.name}</span>}
+          <span className="tv-clock">{clock}</span>
+        </div>
+      </div>
+
+      <div className="tv-slide-label">
+        <span className="tv-slide-icon">{slide.icon}</span>
+        <span className="tv-slide-name">{slide.label}</span>
+        <span className="tv-slide-count">{slideIdx + 1} / {TV_SLIDES.length}</span>
+      </div>
+
+      <div className="tv-stage">
+        <button className="tv-nav tv-nav-prev" onClick={() => goTo((slideIdx - 1 + TV_SLIDES.length) % TV_SLIDES.length)}>‹</button>
+        <div className="tv-slide-wrap">
+          <div className="tv-slide" key={slideKey}>
+            {renderSlide()}
+          </div>
+        </div>
+        <button className="tv-nav tv-nav-next" onClick={() => goTo((slideIdx + 1) % TV_SLIDES.length)}>›</button>
+      </div>
+
+      <div className="tv-controls">
+        <div className="tv-dots">
+          {TV_SLIDES.map((s, i) => (
+            <button key={s.id} className={`tv-dot ${i === slideIdx ? 'active' : ''}`} onClick={() => goTo(i)} title={s.label}>
+              <span className="tv-dot-icon">{s.icon}</span>
+              <span className="tv-dot-label">{s.label}</span>
+            </button>
+          ))}
+        </div>
+        <button className="tv-play-pause" onClick={togglePlay} title={isPlaying ? 'Pause' : 'Play'}>
+          {isPlaying ? '⏸' : '▶'}
+        </button>
+      </div>
+
+      <div className="tv-progress">
+        <div className="tv-progress-fill" style={{ width: `${progressPct}%`, transition: tick === 0 ? 'none' : 'width 1s linear' }} />
+      </div>
     </div>
   )
 }

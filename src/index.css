@@ -1112,7 +1112,8 @@ body {
 
 /* Columns */
 .neural-col { display: flex; flex-direction: column; gap: 0.35rem; position: relative; z-index: 1; min-width: 0; }
-.neural-col-games   { grid-column: 1; }
+.neural-col-games   { grid-column: 1; gap: 0; }
+.game-nodes-list    { flex: 1; display: flex; flex-direction: column; justify-content: space-evenly; gap: 0.35rem; }
 .neural-gap         { grid-column: 2; }
 .neural-col-achs    { grid-column: 3; }
 .neural-gap-2       { grid-column: 4; }
@@ -2320,3 +2321,265 @@ body {
 ═══════════════════════════════════════════════════════════════ */
 .schedule-list { display: flex; flex-direction: column; gap: 0.5rem; }
 
+
+/* ═══════════════════════════════════════════════════════════════
+   TV SLIDESHOW VIEW
+═══════════════════════════════════════════════════════════════ */
+
+.tv-view {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 56px);
+  background: #020509;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ── Topbar ── */
+.tv-topbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.6rem 1.5rem;
+  background: rgba(0,0,0,0.7);
+  border-bottom: 1px solid rgba(0,229,255,0.12);
+  backdrop-filter: blur(8px);
+  flex-shrink: 0;
+  z-index: 10;
+}
+.tv-back-btn {
+  background: rgba(0,229,255,0.08);
+  border: 1px solid rgba(0,229,255,0.25);
+  border-radius: 6px;
+  color: rgba(0,229,255,0.7);
+  font-family: 'Courier New', monospace;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.15em;
+  padding: 0.4rem 0.75rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.tv-back-btn:hover { background: rgba(0,229,255,0.15); color: var(--arc-cyan); }
+.tv-topbar-center { flex: 1; display: flex; justify-content: center; }
+.tv-room-select {
+  background: rgba(0,0,0,0.5);
+  border: 1px solid rgba(0,229,255,0.2);
+  border-radius: 6px;
+  color: var(--arc-cyan);
+  font-family: 'Courier New', monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  padding: 0.35rem 0.75rem;
+  cursor: pointer;
+  outline: none;
+  max-width: 320px; width: 100%;
+}
+.tv-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-shrink: 0;
+}
+.tv-room-badge {
+  font-family: 'Courier New', monospace;
+  font-size: 0.65rem;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  color: rgba(255,255,255,0.5);
+  text-transform: uppercase;
+}
+.tv-clock {
+  font-family: 'Courier New', monospace;
+  font-size: 1.2rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  color: var(--arc-cyan);
+  text-shadow: 0 0 12px rgba(0,229,255,0.6);
+}
+
+/* ── Slide label ── */
+.tv-slide-label {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.45rem 1.5rem;
+  background: rgba(0,229,255,0.04);
+  border-bottom: 1px solid rgba(0,229,255,0.08);
+  flex-shrink: 0;
+}
+.tv-slide-icon { font-size: 1rem; }
+.tv-slide-name {
+  font-family: 'Courier New', monospace;
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.28em;
+  color: var(--arc-cyan);
+  text-shadow: 0 0 10px rgba(0,229,255,0.5);
+  text-transform: uppercase;
+  flex: 1;
+}
+.tv-slide-count {
+  font-family: 'Courier New', monospace;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: rgba(255,255,255,0.25);
+}
+
+/* ── Stage ── */
+.tv-stage {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  position: relative;
+  overflow: hidden;
+  min-height: 0;
+}
+.tv-slide-wrap {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 1.5rem;
+  min-height: 0;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0,229,255,0.2) transparent;
+}
+.tv-slide {
+  animation: tvSlideIn 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes tvSlideIn {
+  from { opacity: 0; transform: translateY(18px) scale(0.99); }
+  to   { opacity: 1; transform: translateY(0)   scale(1);    }
+}
+
+/* ── Nav arrows ── */
+.tv-nav {
+  width: 52px;
+  background: rgba(0,0,0,0.5);
+  border: none;
+  color: rgba(255,255,255,0.2);
+  font-size: 2.5rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+.tv-nav:hover { background: rgba(0,229,255,0.06); color: rgba(0,229,255,0.7); }
+
+/* ── Bottom controls ── */
+.tv-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.6rem 1rem;
+  background: rgba(0,0,0,0.7);
+  border-top: 1px solid rgba(0,229,255,0.1);
+  backdrop-filter: blur(8px);
+  flex-shrink: 0;
+}
+.tv-dots {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.tv-dot {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 20px;
+  padding: 0.3rem 0.6rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  color: rgba(255,255,255,0.35);
+  font-family: 'Courier New', monospace;
+}
+.tv-dot:hover {
+  background: rgba(0,229,255,0.08);
+  border-color: rgba(0,229,255,0.3);
+  color: rgba(0,229,255,0.7);
+}
+.tv-dot.active {
+  background: rgba(0,229,255,0.12);
+  border-color: rgba(0,229,255,0.5);
+  color: var(--arc-cyan);
+  box-shadow: 0 0 10px rgba(0,229,255,0.2);
+}
+.tv-dot-icon { font-size: 0.85rem; }
+.tv-dot-label {
+  font-size: 0.55rem;
+  font-weight: 900;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.tv-play-pause {
+  background: rgba(0,229,255,0.1);
+  border: 1px solid rgba(0,229,255,0.3);
+  border-radius: 50%;
+  width: 40px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  color: var(--arc-cyan);
+  flex-shrink: 0;
+}
+.tv-play-pause:hover { background: rgba(0,229,255,0.2); box-shadow: 0 0 12px rgba(0,229,255,0.3); }
+
+/* ── Progress bar ── */
+.tv-progress {
+  height: 3px;
+  background: rgba(0,229,255,0.08);
+  flex-shrink: 0;
+  position: relative;
+}
+.tv-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, rgba(0,229,255,0.6), rgba(0,229,255,1));
+  box-shadow: 0 0 8px rgba(0,229,255,0.8);
+}
+
+/* ── No data state ── */
+.tv-no-data {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+  text-align: center;
+  padding: 3rem;
+}
+.tv-no-data-icon { font-size: 4rem; margin-bottom: 1rem; }
+.tv-no-data-title {
+  font-family: 'Courier New', monospace;
+  font-size: 1.6rem;
+  font-weight: 900;
+  letter-spacing: 0.3em;
+  color: var(--arc-cyan);
+  text-shadow: 0 0 20px rgba(0,229,255,0.6);
+  margin-bottom: 0.75rem;
+}
+.tv-no-data-sub {
+  font-family: 'Courier New', monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  color: rgba(255,255,255,0.3);
+  max-width: 380px;
+}
+
+/* ── TV player grid (all players slide) ── */
+.tv-player-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+}

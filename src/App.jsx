@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import Dashboard from './components/Dashboard'
+import Dashboard, { TVView } from './components/Dashboard'
 import Rooms from './components/Rooms'
 import RoomDetail from './components/RoomDetail'
 import { onLoad } from './loading'
@@ -7,6 +7,7 @@ import { onLoad } from './loading'
 const TABS = [
   { id: 'dashboard', label: 'Dashboard', icon: '📊' },
   { id: 'rooms',     label: 'Rooms',     icon: '🎮' },
+  { id: 'tv',        label: 'TV Mode',   icon: '📺' },
 ]
 
 const WIZARD_MSGS = [
@@ -110,6 +111,8 @@ export default function App() {
       </nav>
 
       {tab === 'dashboard' && <Dashboard onRoomOpen={openRoom} />}
+
+      {tab === 'tv' && <TVView onBack={() => handleTabChange('dashboard')} />}
 
       {tab === 'rooms' && !selectedRoomId && (
         <Rooms onRoomSelect={openRoom} onToast={toast} />
