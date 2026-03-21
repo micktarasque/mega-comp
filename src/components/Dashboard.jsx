@@ -1883,6 +1883,109 @@ const TV_SLIDES = [
   { id: 'h2h',       label: 'HEAD TO HEAD',  icon: '⚔️',  duration: 20 },
 ]
 
+const TV_DURATION_PRESETS = [
+  { label: '10s', value: 10  },
+  { label: '20s', value: 20  },
+  { label: '30s', value: 30  },
+  { label: '45s', value: 45  },
+  { label: '60s', value: 60  },
+  { label: 'AUTO', value: null },
+]
+
+// ── Pixel art ─────────────────────────────────────────────────────────────────
+const _p = null
+const _C = '#00E5FF'; const _c = '#006688'
+const _Y = '#FFD700'; const _y = '#AA8800'
+const _G = '#39FF14'
+const _P = '#C77DFF'
+
+const PIXEL_TROPHY = [
+  [_p, _p, _Y, _Y, _Y, _Y, _Y, _p, _p],
+  [_p, _Y, _y, _y, _y, _y, _y, _Y, _p],
+  [_Y, _y, _Y, _Y, _Y, _Y, _Y, _y, _Y],
+  [_Y, _y, _Y, _y, _Y, _y, _Y, _y, _Y],
+  [_Y, _y, _Y, _Y, _Y, _Y, _Y, _y, _Y],
+  [_p, _Y, _y, _y, _Y, _y, _y, _Y, _p],
+  [_p, _p, _Y, _Y, _Y, _Y, _Y, _p, _p],
+  [_p, _p, _p, _Y, _Y, _Y, _p, _p, _p],
+  [_p, _Y, _Y, _Y, _Y, _Y, _Y, _Y, _p],
+]
+const PIXEL_CROWN = [
+  [_Y, _p, _p, _p, _Y, _p, _p, _p, _Y],
+  [_Y, _p, _p, _p, _Y, _p, _p, _p, _Y],
+  [_Y, _Y, _p, _Y, _Y, _Y, _p, _Y, _Y],
+  [_Y, _Y, _Y, _Y, _Y, _Y, _Y, _Y, _Y],
+  [_Y, _y, _Y, _y, _Y, _y, _Y, _y, _Y],
+  [_p, _Y, _Y, _Y, _Y, _Y, _Y, _Y, _p],
+]
+const PIXEL_BOLT = [
+  [_p, _p, _C, _C, _C, _p],
+  [_p, _C, _C, _C, _p, _p],
+  [_C, _C, _C, _p, _p, _p],
+  [_C, _C, _C, _C, _C, _C],
+  [_p, _p, _p, _C, _C, _C],
+  [_p, _p, _C, _C, _p, _p],
+  [_p, _C, _C, _p, _p, _p],
+]
+const PIXEL_CTRL = [
+  [_p, _p, _c, _c, _c, _c, _c, _c, _c, _p, _p],
+  [_p, _c, _C, _C, _C, _C, _C, _C, _C, _c, _p],
+  [_c, _C, _C, '#fff', _C, _C, _C, _G, _C, _C, _c],
+  [_c, _C, '#fff', '#fff', '#fff', _C, _G, _G, _G, _C, _c],
+  [_c, _C, _C, '#fff', _C, _C, _C, _G, _C, _C, _c],
+  [_c, _C, _C, _C, _C, _C, _C, _C, _C, _C, _c],
+  [_p, _c, _C, _C, _Y, _Y, _C, _C, _C, _c, _p],
+  [_p, _p, _c, _c, _c, _c, _c, _c, _c, _p, _p],
+]
+const PIXEL_STAR = [
+  [_p, _p, _Y, _p, _p],
+  [_p, _Y, _Y, _Y, _p],
+  [_Y, _Y, _Y, _Y, _Y],
+  [_p, _Y, _Y, _Y, _p],
+  [_p, _p, _Y, _p, _p],
+]
+
+function PixelArt({ pixels, size = 4, glow = false }) {
+  const cols = pixels[0].length
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, ${size}px)`, imageRendering: 'pixelated', flexShrink: 0 }}>
+      {pixels.flat().map((color, i) => (
+        <div key={i} style={{ width: size, height: size, background: color ?? 'transparent', boxShadow: glow && color ? `0 0 ${size * 1.5}px ${color}` : undefined }} />
+      ))}
+    </div>
+  )
+}
+
+// ── Countdown ring ────────────────────────────────────────────────────────────
+function TVCountdown({ tick, duration, isPlaying }) {
+  const remaining = Math.max(duration - tick, 0)
+  const r = 38; const circ = 2 * Math.PI * r
+  const dashoffset = circ * (1 - tick / Math.max(duration, 1))
+  const urgent = remaining <= 5 && isPlaying
+
+  return (
+    <div className={`tv-countdown ${urgent ? 'urgent' : ''}`}>
+      <svg viewBox="0 0 88 88" className="tv-cd-svg">
+        <defs>
+          <filter id="cdglow"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        </defs>
+        <circle cx="44" cy="44" r={r} className="tv-cd-track" />
+        <circle cx="44" cy="44" r={r} className="tv-cd-fill"
+          strokeDasharray={circ} strokeDashoffset={dashoffset}
+          transform="rotate(-90 44 44)" filter="url(#cdglow)"
+          style={{ stroke: urgent ? '#FF4040' : '#00E5FF', transition: tick === 0 ? 'none' : 'stroke-dashoffset 1s linear' }}
+        />
+      </svg>
+      <div className="tv-cd-inner">
+        <div className="tv-cd-num" style={{ color: urgent ? '#FF4040' : (isPlaying ? '#00E5FF' : '#888'), textShadow: urgent ? '0 0 20px rgba(255,64,64,0.9)' : isPlaying ? '0 0 16px rgba(0,229,255,0.8)' : 'none' }}>
+          {isPlaying ? remaining : '⏸'}
+        </div>
+        <div className="tv-cd-label">{isPlaying ? 'NEXT' : 'PAUSED'}</div>
+      </div>
+    </div>
+  )
+}
+
 export function TVView({ onBack }) {
   const [rooms, setRooms]                   = useState([])
   const [selectedRoomId, setSelectedRoomId] = useState(() => localStorage.getItem(LAST_ROOM_KEY))
@@ -1895,9 +1998,11 @@ export function TVView({ onBack }) {
   const [tick, setTick]                     = useState(0)
   const [slideKey, setSlideKey]             = useState(0)
   const [clock, setClock]                   = useState('')
+  const [slideDuration, setSlideDuration]   = useState(null)
 
   const isPlayingRef      = useRef(true)
   const slideIdxRef       = useRef(0)
+  const slideDurationRef  = useRef(null)
   const selectedRoomIdRef = useRef(selectedRoomId)
 
   useEffect(() => {
@@ -1918,8 +2023,7 @@ export function TVView({ onBack }) {
   async function loadData(roomId) {
     if (!roomId) return
     const [s, allGames, rg, achs] = await Promise.all([
-      getRoomStats(roomId),
-      getGames(),
+      getRoomStats(roomId), getGames(),
       getRoomGames(roomId).catch(() => []),
       getAchievements(roomId).catch(() => []),
     ])
@@ -1933,7 +2037,7 @@ export function TVView({ onBack }) {
     const id = setInterval(() => {
       if (!isPlayingRef.current) return
       setTick(t => {
-        const dur = TV_SLIDES[slideIdxRef.current].duration
+        const dur = slideDurationRef.current ?? TV_SLIDES[slideIdxRef.current].duration
         if (t + 1 >= dur) {
           const next = (slideIdxRef.current + 1) % TV_SLIDES.length
           slideIdxRef.current = next
@@ -1953,64 +2057,66 @@ export function TVView({ onBack }) {
   }, [])
 
   function goTo(i) {
-    slideIdxRef.current = i
-    setSlideIdx(i)
-    setSlideKey(k => k + 1)
-    setTick(0)
+    slideIdxRef.current = i; setSlideIdx(i); setSlideKey(k => k + 1); setTick(0)
   }
+  function togglePlay() { setIsPlaying(v => { isPlayingRef.current = !v; return !v }) }
+  function setPreset(value) { slideDurationRef.current = value; setSlideDuration(value); setTick(0) }
 
-  function togglePlay() {
-    setIsPlaying(v => { isPlayingRef.current = !v; return !v })
-  }
-
-  const selectedRoom = rooms.find(r => r.id === selectedRoomId) ?? null
-  const roomPlayers  = useMemo(() => stats.map(s => ({ id: s.id, name: s.name, color: s.color })), [stats])
-  const champion     = stats[0]
-  const slide        = TV_SLIDES[slideIdx]
-  const progressPct  = (tick / slide.duration) * 100
-  const hasData      = stats.length > 0
+  const selectedRoom      = rooms.find(r => r.id === selectedRoomId) ?? null
+  const roomPlayers       = useMemo(() => stats.map(s => ({ id: s.id, name: s.name, color: s.color })), [stats])
+  const champion          = stats[0]
+  const slide             = TV_SLIDES[slideIdx]
+  const effectiveDuration = slideDuration ?? slide.duration
+  const progressPct       = (tick / effectiveDuration) * 100
+  const hasData           = stats.length > 0
 
   function renderSlide() {
     if (!selectedRoomId) return (
       <div className="tv-no-data">
-        <div className="tv-no-data-icon">📺</div>
+        <PixelArt pixels={PIXEL_CTRL} size={7} glow />
         <div className="tv-no-data-title">SELECT A ROOM</div>
-        <div className="tv-no-data-sub">Pick a competition room from the selector above to start the broadcast</div>
+        <div className="tv-no-data-sub">Pick a competition room from the selector above to begin the broadcast</div>
       </div>
     )
     if (!hasData) return (
       <div className="tv-no-data">
-        <div className="tv-no-data-icon">⏳</div>
+        <div className="tv-no-data-spinner">◈</div>
         <div className="tv-no-data-title">LOADING DATA</div>
       </div>
     )
     switch (slide.id) {
-      case 'standings':
-        return <StandingsBoard stats={stats} />
-      case 'neural':
-        return <NeuralConnectionMap roomGames={roomGames} games={games} achievements={achievements} stats={stats} onLinkChange={() => loadData(selectedRoomId)} />
-      case 'spotlight':
-        return champion
-          ? <ChampionPanel champion={champion} runner_up={stats[1]} stats={stats} games={games} />
-          : <div className="tv-no-data"><div className="tv-no-data-title">NO RESULTS YET</div></div>
-      case 'players':
-        return <div className="tv-player-grid">{stats.map((p, i) => <PlayerCard key={p.id} player={p} rank={i} games={games} allStats={stats} />)}</div>
-      case 'race':
-        return <PointsRace stats={stats} />
-      case 'form':
-        return <FormGuide stats={stats} games={games} />
-      case 'h2h':
-        return <div className="dual-panel"><GameDominance games={games} players={roomPlayers} /><H2HMatrix players={roomPlayers} games={games} /></div>
-      default:
-        return null
+      case 'standings':  return <StandingsBoard stats={stats} />
+      case 'neural':     return <NeuralConnectionMap roomGames={roomGames} games={games} achievements={achievements} stats={stats} onLinkChange={() => loadData(selectedRoomId)} />
+      case 'spotlight':  return champion ? <ChampionPanel champion={champion} runner_up={stats[1]} stats={stats} games={games} /> : <div className="tv-no-data"><div className="tv-no-data-title">NO RESULTS YET</div></div>
+      case 'players':    return <div className="tv-player-grid">{stats.map((p, i) => <PlayerCard key={p.id} player={p} rank={i} games={games} allStats={stats} />)}</div>
+      case 'race':       return <PointsRace stats={stats} />
+      case 'form':       return <FormGuide stats={stats} games={games} />
+      case 'h2h':        return <div className="dual-panel"><GameDominance games={games} players={roomPlayers} /><H2HMatrix players={roomPlayers} games={games} /></div>
+      default:           return null
     }
   }
 
   return (
     <div className="tv-view">
+      {/* Atmosphere */}
+      <div className="tv-scanlines"    aria-hidden="true" />
+      <div className="tv-vignette"     aria-hidden="true" />
+      <div className="tv-grid-bg"      aria-hidden="true" />
+
+      {/* HUD corners */}
+      <div className="tv-hud-corner tl" aria-hidden="true" />
+      <div className="tv-hud-corner tr" aria-hidden="true" />
+      <div className="tv-hud-corner bl" aria-hidden="true" />
+      <div className="tv-hud-corner br" aria-hidden="true" />
+
+      {/* ── Top bar ── */}
       <div className="tv-topbar">
-        <button className="tv-back-btn" onClick={onBack}>← EXIT</button>
+        <div className="tv-topbar-left">
+          <button className="tv-back-btn" onClick={onBack}>← EXIT</button>
+          <div className="tv-on-air"><span className="tv-on-air-dot" />ON AIR</div>
+        </div>
         <div className="tv-topbar-center">
+          <div className="tv-brand">⬡ MEGA COMP · LIVE ⬡</div>
           <select value={selectedRoomId ?? ''} onChange={e => setSelectedRoomId(e.target.value || null)} className="tv-room-select">
             <option value="">— select room —</option>
             {rooms.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
@@ -2022,23 +2128,79 @@ export function TVView({ onBack }) {
         </div>
       </div>
 
-      <div className="tv-slide-label">
-        <span className="tv-slide-icon">{slide.icon}</span>
-        <span className="tv-slide-name">{slide.label}</span>
-        <span className="tv-slide-count">{slideIdx + 1} / {TV_SLIDES.length}</span>
+      {/* ── Slide identity bar ── */}
+      <div className="tv-slide-bar">
+        <div className="tv-slide-bar-edge">
+          <PixelArt pixels={PIXEL_BOLT} size={3} />
+        </div>
+        <div className="tv-slide-bar-center">
+          <span className="tv-slide-icon">{slide.icon}</span>
+          <span className="tv-slide-name">{slide.label}</span>
+        </div>
+        <div className="tv-slide-bar-edge tv-slide-bar-edge-right">
+          <span className="tv-slide-count">{slideIdx + 1} / {TV_SLIDES.length}</span>
+          <PixelArt pixels={PIXEL_BOLT} size={3} />
+        </div>
       </div>
 
+      {/* ── Stage ── */}
       <div className="tv-stage">
-        <button className="tv-nav tv-nav-prev" onClick={() => goTo((slideIdx - 1 + TV_SLIDES.length) % TV_SLIDES.length)}>‹</button>
+
+        {/* Left side panel */}
+        <div className="tv-side-panel tv-side-left">
+          <button className="tv-nav-arrow" onClick={() => goTo((slideIdx - 1 + TV_SLIDES.length) % TV_SLIDES.length)}>‹</button>
+          <div className="tv-side-sprite"><PixelArt pixels={PIXEL_TROPHY} size={5} glow /></div>
+          <div className="tv-side-divider" />
+          <div className="tv-side-stat-col">
+            {stats.slice(0, 5).map((p, i) => (
+              <div key={p.id} className="tv-side-stat">
+                <span className="tv-side-stat-rank" style={{ color: i === 0 ? '#FFD700' : 'rgba(255,255,255,0.3)' }}>{i + 1}</span>
+                <span className="tv-side-stat-name" style={{ color: p.color }}>{p.name.split(',')[0].trim().slice(0, 8)}</span>
+                <span className="tv-side-stat-pts">{p.totalPoints}</span>
+              </div>
+            ))}
+          </div>
+          <div className="tv-side-label">PREV</div>
+        </div>
+
+        {/* Content */}
         <div className="tv-slide-wrap">
-          <div className="tv-slide" key={slideKey}>
-            {renderSlide()}
+          <div className="tv-slide" key={slideKey}>{renderSlide()}</div>
+        </div>
+
+        {/* Right side panel */}
+        <div className="tv-side-panel tv-side-right">
+          <button className="tv-nav-arrow" onClick={() => goTo((slideIdx + 1) % TV_SLIDES.length)}>›</button>
+          <div className="tv-side-sprite"><PixelArt pixels={PIXEL_CROWN} size={5} glow /></div>
+          <div className="tv-side-divider" />
+          <div className="tv-slide-queue">
+            {TV_SLIDES.map((s, i) => (
+              <div key={s.id} className={`tv-queue-item ${i === slideIdx ? 'current' : ''}`} onClick={() => goTo(i)}>
+                <span className="tv-queue-icon">{s.icon}</span>
+                <span className="tv-queue-label">{s.label}</span>
+              </div>
+            ))}
+          </div>
+          <div className="tv-side-label">NEXT</div>
+        </div>
+      </div>
+
+      {/* ── Countdown clock ── */}
+      <TVCountdown tick={tick} duration={effectiveDuration} isPlaying={isPlaying} />
+
+      {/* ── Bottom controls ── */}
+      <div className="tv-controls">
+        <div className="tv-interval-group">
+          <span className="tv-interval-label">⏱ INTERVAL</span>
+          <div className="tv-presets">
+            {TV_DURATION_PRESETS.map(p => (
+              <button key={p.label} className={`tv-preset ${slideDuration === p.value ? 'active' : ''}`} onClick={() => setPreset(p.value)}>
+                {p.label}
+              </button>
+            ))}
           </div>
         </div>
-        <button className="tv-nav tv-nav-next" onClick={() => goTo((slideIdx + 1) % TV_SLIDES.length)}>›</button>
-      </div>
 
-      <div className="tv-controls">
         <div className="tv-dots">
           {TV_SLIDES.map((s, i) => (
             <button key={s.id} className={`tv-dot ${i === slideIdx ? 'active' : ''}`} onClick={() => goTo(i)} title={s.label}>
@@ -2047,11 +2209,13 @@ export function TVView({ onBack }) {
             </button>
           ))}
         </div>
+
         <button className="tv-play-pause" onClick={togglePlay} title={isPlaying ? 'Pause' : 'Play'}>
           {isPlaying ? '⏸' : '▶'}
         </button>
       </div>
 
+      {/* ── Progress bar ── */}
       <div className="tv-progress">
         <div className="tv-progress-fill" style={{ width: `${progressPct}%`, transition: tick === 0 ? 'none' : 'width 1s linear' }} />
       </div>
